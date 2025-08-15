@@ -1,17 +1,23 @@
 #include <Server.hpp>
 #include <Client.hpp>
 
-int main(int port, std::string password)
+int main(int argc, char **argv)
 {
-    try
+    int port = std::atoi(argv[1]);
+    std::string password = argv[2];
+
+    if (argc == 3)
     {
-        Server server(0000, "1234");
-        server.run_serv();
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr << "ERROR" << e.what() << std::endl;
-        return (1);
+        try
+        {
+            Server server(port, password);
+            server.run_serv();
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << "ERROR" << e.what() << std::endl;
+            return (1);
+        }
     }
     return (0);
 }

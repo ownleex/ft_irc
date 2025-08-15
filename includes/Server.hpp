@@ -2,6 +2,7 @@
 #define SERVER_HPP
 #include <string>
 #include <iostream>
+#include "cstdlib"
 #include "Client.hpp"
 
 class Server

@@ -3,28 +3,37 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: cparodi <cparodi@student.42.fr>            +#+  +:+       +#+         #
+#    By: ayarmaya <ayarmaya@student.42nice.fr>      +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/04/22 09:30:05 by cparodi           #+#    #+#              #
-#    Updated: 2025/04/08 16:42:17 by cparodi          ###   ########.fr        #
+#    Updated: 2025/08/16 01:37:27 by ayarmaya         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 # Program Executable
-EXE = ft_irc
+EXE = ircsrv
+
+# Directories
+SRCDIR = srcs/
+INCDIR = includes/
+OBJDIR = obj/
 
 # Files
 SRC =		main.cpp \
 			Client.cpp \
 			Server.cpp
 
+# Headers
+HEADERS =	Client.hpp \
+			Server.hpp
 
-SOURCES =		${SRC}
-OBJECTS =		${SOURCES:.cpp=.o}
+SOURCES =		$(addprefix $(SRCDIR), $(SRC))
+OBJECTS =		$(patsubst $(SRCDIR)%.cpp, $(OBJDIR)%.o, $(SOURCES))
+DEPENDS =		$(OBJECTS:.o=.d)
 
 # Variables
 CC		= c++
-CFLAGS	= -std=c++98 -Wall -Werror -Wextra -MMD -MP
+CFLAGS	= -std=c++98 -Wall -Werror -Wextra -MMD -MP -I$(INCDIR)
 RM		= rm -f
 
 # Loading Bar
@@ -50,20 +59,24 @@ ${EXE}:		${OBJECTS}
 		@${CC} ${CFLAGS} ${OBJECTS} -o ${EXE}
 		@echo "\n\n${GREEN}[✓] - ${_GREEN}ft_irc${GREEN} Successfully Compiled!${RESET}"
 
-%.o:		%.cpp
+${OBJDIR}:
+		@mkdir -p ${OBJDIR}
+
+$(OBJDIR)%.o:	$(SRCDIR)%.cpp | ${OBJDIR}
 		@${eval FILE_COUNT = ${shell expr ${FILE_COUNT} + 1}}
-		@${CC} ${CFLAGS} -c $? -o $@
+		@${CC} ${CFLAGS} -c $< -o $@
 		@echo "${WHITE}[!] - Compilation loading...${RESET}"
 		@printf "${WHITE}[${GREEN}%-.${BAR_LOAD}s${RED}%-.${BAR_REST}s${WHITE}] [%d/%d (%d%%)]${RESET}" "#######################" "#######################" ${FILE_COUNT} ${FILE_TOTAL} ${BAR_SIZE}
 		@echo ""
 		@echo "${UP}${UP}${UP}"
 
 clean:
-		@${RM} ${OBJECTS}
+		@${RM} -r ${OBJDIR}
 		@echo "${WHITE}[!] - ${_WHITE}ft_irc${WHITE} Successfully Cleaned!${RESET}"
 
-fclean: clean
-		@${RM} ${OBJECTS} ${EXE}
+fclean: 	clean
+		@${RM} ${EXE}
+
 re:			fclean all
 
 -include $(DEPENDS)

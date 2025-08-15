@@ -56,5 +56,6 @@ dkms.conf
 .vscode
 settings.json
 *.pdf
+ircsrv
 all
 
