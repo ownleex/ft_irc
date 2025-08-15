@@ -10,7 +10,7 @@ int main(int port, std::string password)
     }
     catch(const std::exception& e)
     {
-        std::cerr << "ERROR" << e.what() << '\n';
+        std::cerr << "ERROR" << e.what() << std::endl;
         return (1);
     }
     return (0);
