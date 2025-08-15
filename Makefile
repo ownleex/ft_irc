@@ -24,7 +24,7 @@ OBJECTS =		${SOURCES:.cpp=.o}
 
 # Variables
 CC		= c++
-CFLAGS	= -std=c++98 -Wall -Werror -Wextra
+CFLAGS	= -std=c++98 -Wall -Werror -Wextra -MMD -MP
 RM		= rm -f
 
 # Loading Bar
@@ -65,5 +65,7 @@ clean:
 fclean: clean
 		@${RM} ${OBJECTS} ${EXE}
 re:			fclean all
+
+-include $(DEPENDS)
 
 .PHONY: all clean fclean re
