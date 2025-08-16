@@ -53,6 +53,7 @@ bool Client::isRegistered() const
 }
 
 // Setters
+
 void Client::setUser(const std::string &user)
 {
     _username = user;
