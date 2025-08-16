@@ -5,7 +5,6 @@
 #include <set>
 #include "Server.hpp"
 
-
 class Client
 {
     private:
