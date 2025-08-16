@@ -23,7 +23,7 @@ bool isValidPortString(const char* str, int& port) {
 
 int main(int argc, char** argv) {
     if (argc != 3) {
-        std::cerr << "\nUsage: " << argv[0] << " <port> <password>\n\n";
+        std::cerr << "\nUsage: ./ircsrv <port> <password>\n\n";
         return 1;
     }
     

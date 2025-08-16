@@ -57,5 +57,7 @@ dkms.conf
 settings.json
 *.pdf
 ircsrv
+master.sh
+master_code.txt
 all
 
