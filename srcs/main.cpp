@@ -3,11 +3,11 @@
 
 int main(int argc, char **argv)
 {
-    int port = std::atoi(argv[1]);
-    std::string password = argv[2];
-
     if (argc == 3)
     {
+        int port = std::atoi(argv[1]);
+        std::string password = argv[2];
+
         try
         {
             Server server(port, password);
@@ -19,5 +19,8 @@ int main(int argc, char **argv)
             return (1);
         }
     }
+    else
+        std::cout << "\nusage : ./ircsrv port password\n\n";
+
     return (0);
 }
