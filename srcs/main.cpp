@@ -6,6 +6,12 @@ int main(int argc, char **argv)
     if (argc == 3)
     {
         int port = std::atoi(argv[1]);
+        if (port < 1024 | port > 65535)
+        {
+            std::cerr << "\nERROR: invalid port (1024-65535)\n\n";
+            std::exit(1);
+        }
+
         std::string password = argv[2];
 
         try
@@ -16,11 +22,13 @@ int main(int argc, char **argv)
         catch(const std::exception& e)
         {
             std::cerr << "ERROR" << e.what() << std::endl;
-            return (1);
+            std::exit(1);
         }
     }
     else
-        std::cout << "\nusage : ./ircsrv port password\n\n";
-
+    {
+        std::cerr << "\nusage : ./ircsrv port password\n\n";
+        std::exit(1);
+    }
     return (0);
 }
