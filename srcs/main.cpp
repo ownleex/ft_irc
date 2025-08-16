@@ -6,7 +6,6 @@ bool isValidPortString(const char* str, int& port) {
         return false;
     }
     
-    
     char* endptr;
     long val = std::strtol(str, &endptr, 10);
     
