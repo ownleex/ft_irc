@@ -1,34 +1,52 @@
 #include <Server.hpp>
 #include <Client.hpp>
 
-int main(int argc, char **argv)
-{
-    if (argc == 3)
-    {
-        int port = std::atoi(argv[1]);
-        if (port < 1024 | port > 65535)
-        {
-            std::cerr << "\nERROR: invalid port (1024-65535)\n\n";
-            std::exit(1);
-        }
-
-        std::string password = argv[2];
-
-        try
-        {
-            Server server(port, password);
-            server.run_serv();
-        }
-        catch(const std::exception& e)
-        {
-            std::cerr << "ERROR" << e.what() << std::endl;
-            std::exit(1);
-        }
+bool isValidPortString(const char* str, int& port) {
+    if (!str || *str == '\0') {
+        return false;
     }
-    else
-    {
-        std::cerr << "\nusage : ./ircsrv port password\n\n";
-        std::exit(1);
+    
+    char* endptr;
+    long val = std::strtol(str, &endptr, 10);
+    
+    if (*endptr != '\0') {
+        return false;
     }
-    return (0);
+    
+    if (val < 1024 || val > 65535) {
+        return false;
+    }
+    
+    port = static_cast<int>(val);
+    return true;
+}
+
+int main(int argc, char** argv) {
+    if (argc != 3) {
+        std::cerr << "\nUsage: " << argv[0] << " <port> <password>\n\n";
+        return 1;
+    }
+    
+    int port;
+    if (!isValidPortString(argv[1], port)) {
+        std::cerr << "\nERROR: invalid port (must be a number between 1024-65535)\n\n";
+        return 1;
+    }
+    
+    std::string password = argv[2];
+    if (password.empty()) {
+        std::cerr << "\nERROR: password cannot be empty\n\n";
+        return 1;
+    }
+    
+    try {
+        Server server(port, password);
+        server.run_serv();
+    }
+    catch (const std::exception& e) {
+        std::cerr << "\nERROR: " << e.what() << "\n\n";
+        return 1;
+    }
+    
+    return 0;
 }
