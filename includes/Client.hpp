@@ -1,6 +1,7 @@
-#ifndef CLIENT_HPP
-#define CLIENT_HPP
+#pragma once
+
 #include <string>
+#include <cstdlib>
 #include <set>
 
 
@@ -41,5 +42,3 @@ class Client
         void setRegistered(bool registered);
 
 };
-
-#endif
