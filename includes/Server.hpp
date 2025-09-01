@@ -25,8 +25,8 @@ class Server
 
         void initSocket();
         void newConnection();
-        void clientData();
-        void removeClient();
+        void clientData(int fd);
+        void removeClient(int fd);
 
     public:
         Server(int port, const std::string &password);

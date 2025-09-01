@@ -3,10 +3,14 @@
 Server::Server(int port, const std::string &password) : _port(port), _password(password)
 {
 	std::cout << "Server open on port " << _port << std::endl;
+    initSocket();
 }
 
 Server::~Server()
 {
+    for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+        close(it->first);
+    close(_serverSocket);
 	std::cout << "Server close !" << std::endl;
 }
 
@@ -16,6 +20,8 @@ void Server::initSocket()
     // ca me renvoie un fd que linux uttilise pour identifier le reseau
     if (_serverSocket < 0)
         throw std::runtime_error("socket INIT failed");
+    int opt = 1;
+    setsockopt(_serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     sockaddr_in addr; // struct pour define l'addresse ip
     std::memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET; 
@@ -45,10 +51,67 @@ void Server::run_serv()
             if (_pollfds[i].revents & POLLIN)
             {
                 if (_pollfds[i].fd == _serverSocket)
-                    // newConnection();
+                    newConnection();
                 else
-                    // clientData();
+                    clientData(_pollfds[i].fd);
             }
+        }
+    }
+}
+void Server::newConnection()
+{
+    sockaddr_in clientAddr;
+    socklen_t len = sizeof(clientAddr);
+    int clientFd = accept(_serverSocket, (struct sockaddr *) &clientAddr, &len);
+    if (clientFd < 0)
+    {
+        std::cerr << "newConnection failed" << std::endl;
+        return;
+    }
+    pollfd pfd;
+    pfd.fd = clientFd;
+    pfd.events = POLLIN;
+    _pollfds.push_back(pfd);
+    _clients.insert(std::make_pair(clientFd, Client(clientFd)));
+
+    std::cout << "new connection from FD=" << clientFd << std::endl;
+}
+
+void Server::clientData(int fd)
+{
+    char buffer[512];
+    ssize_t bytes = recv(fd, buffer, sizeof(buffer) - 1, 0); // -1 si on veux traiter le \0
+    if (bytes <= 0)
+    {
+        std::cout << "Client disconnected from FD=" << fd << std::endl;
+        removeClient(fd);
+        return;
+    }
+    buffer[bytes] = '\0';
+
+    std::map<int, Client>::iterator it = _clients.find(fd);
+    if (it != _clients.end())
+    {
+        it->second.appendToBuffer(buffer);
+        std::cout << "received from FD=" << fd << ": " << buffer;
+    }
+    else
+    {
+        std::cerr << "client not found" << std::endl;
+        removeClient(fd);
+    }
+}
+
+void Server::removeClient(int fd)
+{
+    close(fd);
+    _clients.erase(fd);
+    for (size_t i = 0; i < _pollfds.size(); i++)
+    {
+        if (_pollfds[i].fd == fd)
+        {
+            _pollfds.erase(_pollfds.begin() + i);
+            break;
         }
     }
 }
