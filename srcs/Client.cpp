@@ -88,3 +88,8 @@ void Client::setRegistered(bool registered)
 {
     _registered = registered;
 }
+
+void Client::appendToBuffer(const std::string &data)
+{
+    _buffer += data;
+}

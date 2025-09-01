@@ -41,4 +41,6 @@ class Client
         void setAuthenticated(bool authenticated);
         void setRegistered(bool registered);
 
+        void appendToBuffer(const std::string &data);
+
 };
