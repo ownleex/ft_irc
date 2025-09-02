@@ -37,7 +37,7 @@ const std::string &Client::getHostname() const
     return (_hostname);
 }
 
-const std::string &Client::getBuffer() const
+const std::string &Client::getBuffer()
 {
     return (_buffer);
 }
