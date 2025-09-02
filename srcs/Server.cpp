@@ -3,6 +3,7 @@
 Server::Server(int port, const std::string &password) : _port(port), _password(password)
 {
 	std::cout << "Server open on port " << _port << std::endl;
+    _commandHandler = new CommandHandler(this);
     initSocket();
 }
 
@@ -11,6 +12,7 @@ Server::~Server()
     for (std::map<int, Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
         close(it->first);
     close(_serverSocket);
+    delete _commandHandler;
 	std::cout << "Server close !" << std::endl;
 }
 
@@ -93,7 +95,7 @@ void Server::clientData(int fd)
     if (it != _clients.end())
     {
         it->second.appendToBuffer(buffer);
-        std::cout << "received from FD=" << fd << ": " << buffer;
+        _commandHandler->processClientBuffer(fd);
     }
     else
     {
