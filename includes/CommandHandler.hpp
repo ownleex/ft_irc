@@ -17,6 +17,8 @@ class CommandHandler
         std::vector<std::string> split(const std::string& str, char delimiter);
         void sendResponse(int fd, const std::string& message);
 
+        void handlePass(int fd, const std::vector<std::string>& params);
+
     public:
         CommandHandler(Server* server);
         ~CommandHandler();

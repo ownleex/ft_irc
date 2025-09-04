@@ -70,7 +70,7 @@ void CommandHandler::executeCommand(int fd, const std::string& command)
     // TODO: ici on ajoutera les vraies commandes plus tard
     if (cmd == "PASS")
     {
-        std::cout << "-> Will handle PASS command later" << std::endl;
+        handlePass(fd, params);
     }
     else if (cmd == "NICK")
     {
@@ -84,6 +84,58 @@ void CommandHandler::executeCommand(int fd, const std::string& command)
     {
         std::cout << "-> Unknown command: " << cmd << std::endl;
     }
+}
+
+// ================ COMMANDES IRC ================
+
+void CommandHandler::handlePass(int fd, const std::vector<std::string>& params)
+{
+    if (!_server)
+        return;
+
+    std::map<int, Client>& clients = _server->getClients();
+    std::map<int, Client>::iterator clientIt = clients.find(fd);
+    if (clientIt == clients.end())
+        return;
+
+    Client& client = clientIt->second;
+
+    // Vérifier si le client est déjà enregistré
+    if (client.isRegistered())
+    {
+        // ERR_ALREADYREGISTERED (462)
+        sendResponse(fd, "462 " + client.getNickname() + " :You may not reregister\r\n");
+        return;
+    }
+
+    // Vérifier qu'il y a bien un paramètre (le mot de passe)
+    if (params.empty())
+    {
+        // ERR_NEEDMOREPARAMS (461)
+        sendResponse(fd, "461 * PASS :Not enough parameters\r\n");
+        return;
+    }
+
+    std::string providedPassword = params[0];
+    
+    // Récupérer le mot de passe du serveur
+    std::string serverPassword = _server->getPassword();
+    
+    // Comparer avec le mot de passe fourni
+    if (providedPassword != serverPassword)
+    {
+        // ERR_PASSWDMISMATCH (464)
+        sendResponse(fd, "464 * :Password incorrect\r\n");
+        std::cout << "Client FD=" << fd << " provided incorrect password" << std::endl;
+        return;
+    }
+
+    // Mot de passe correct
+    client.setAuthenticated(true);
+    std::cout << "Client FD=" << fd << " authenticated successfully" << std::endl;
+    
+    // Pas de réponse spécifique pour PASS selon le RFC, 
+    // mais on peut logger le succès
 }
 
 // Utilitaires

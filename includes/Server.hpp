@@ -36,5 +36,8 @@ class Server
         ~Server();
 
         void run_serv();
+        
+        // Getters
         std::map<int, Client>& getClients() { return _clients; }
+        const std::string& getPassword() const { return _password; }
 };
