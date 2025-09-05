@@ -17,12 +17,16 @@ class CommandHandler
         std::vector<std::string> split(const std::string& str, char delimiter);
         void sendResponse(int fd, const std::string& message);
 
+        // PASS
         void handlePass(int fd, const std::vector<std::string>& params);
 
-        // gestion NICK
+        // NICK
         void handleNick(int fd, const std::vector<std::string>& params);
         bool isValidNickname(const std::string& nick);
         bool isNicknameInUse(const std::string& nick, int excludeFd = -1);
+
+        // USER
+        void handleUser(int fd, const std::vector<std::string>& params);
 
     public:
         CommandHandler(Server* server);

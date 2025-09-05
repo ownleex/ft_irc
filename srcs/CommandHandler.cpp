@@ -78,7 +78,7 @@ void CommandHandler::executeCommand(int fd, const std::string& command)
     }
     else if (cmd == "USER")
     {
-        std::cout << "-> Will handle USER command later" << std::endl;
+        handleUser(fd, params);
     }
     else
     {
@@ -273,6 +273,83 @@ bool CommandHandler::isNicknameInUse(const std::string& nick, int excludeFd)
     }
     
     return false;
+}
+
+void CommandHandler::handleUser(int fd, const std::vector<std::string>& params)
+{
+    if (!_server)
+        return;
+
+    std::map<int, Client>& clients = _server->getClients();
+    std::map<int, Client>::iterator clientIt = clients.find(fd);
+    if (clientIt == clients.end())
+        return;
+
+    Client& client = clientIt->second;
+
+    // Vérifier que le client est authentifié
+    if (!client.isAuthenticated())
+    {
+        sendResponse(fd, "451 * :You have not registered\r\n");
+        return;
+    }
+
+    // Vérifier qu'il y a au moins 4 paramètres
+    if (params.size() < 4)
+    {
+        // ERR_NEEDMOREPARAMS (461)
+        std::string nick = client.getNickname().empty() ? "*" : client.getNickname();
+        sendResponse(fd, "461 " + nick + " USER :Not enough parameters\r\n");
+        return;
+    }
+
+    // Vérifier que le client n'est pas déjà enregistré
+    if (client.isRegistered())
+    {
+        // ERR_ALREADYREGISTERED (462)
+        sendResponse(fd, "462 " + client.getNickname() + " :You may not reregister\r\n");
+        return;
+    }
+
+    // Extraire les paramètres
+    std::string username = params[0];
+    // params[1] est hostname (ignoré, on utilise localhost)
+    // params[2] est servername (ignoré)
+    std::string realname = params[3];
+
+    // Le realname peut commencer par ':' et contenir des espaces
+    if (realname[0] == ':')
+        realname = realname.substr(1);
+    
+    // Reconstituer le realname complet si il y a des espaces
+    for (size_t i = 4; i < params.size(); i++)
+        realname += " " + params[i];
+
+    // Définir les informations du client
+    client.setUser(username);
+    client.setRealname(realname);
+    client.setHostname("localhost"); // On peut utiliser localhost ou l'IP réelle
+
+    std::cout << "Client FD=" << fd << " set user info: " << username << " / " << realname << std::endl;
+
+    // Vérifier si le client peut maintenant être considéré comme complètement enregistré
+    // (authentifié + nickname + username définis)
+    if (client.isAuthenticated() && !client.getNickname().empty() && 
+        !client.getUsername().empty() && !client.isRegistered())
+    {
+        client.setRegistered(true);
+        
+        std::string nick = client.getNickname();
+        std::string userhost = nick + "!" + username + "@" + client.getHostname();
+        
+        // Envoyer les messages de bienvenue (RPL_WELCOME, etc.)
+        sendResponse(fd, "001 " + nick + " :Welcome to the Internet Relay Network " + userhost + "\r\n");
+        sendResponse(fd, "002 " + nick + " :Your host is ircserv, running version 1.0\r\n");
+        sendResponse(fd, "003 " + nick + " :This server was created today\r\n");
+        sendResponse(fd, "004 " + nick + " ircserv 1.0 o o\r\n");
+        
+        std::cout << "Client FD=" << fd << " (" << nick << ") is now fully registered" << std::endl;
+    }
 }
 
 void CommandHandler::sendResponse(int fd, const std::string& message)
