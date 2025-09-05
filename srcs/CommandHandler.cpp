@@ -80,6 +80,10 @@ void CommandHandler::executeCommand(int fd, const std::string& command)
     {
         handleUser(fd, params);
     }
+    else if (cmd == "QUIT")
+    {
+        handleQuit(fd, params);
+    }
     else
     {
         std::cout << "-> Unknown command: " << cmd << std::endl;
@@ -350,6 +354,76 @@ void CommandHandler::handleUser(int fd, const std::vector<std::string>& params)
         
         std::cout << "Client FD=" << fd << " (" << nick << ") is now fully registered" << std::endl;
     }
+}
+
+void CommandHandler::handleQuit(int fd, const std::vector<std::string>& params)
+{
+    if (!_server)
+        return;
+
+    std::map<int, Client>& clients = _server->getClients();
+    std::map<int, Client>::iterator clientIt = clients.find(fd);
+    if (clientIt == clients.end())
+        return;
+
+    Client& client = clientIt->second;
+
+    // Construire le message de quit
+    std::string quitMessage = "Client Quit";
+    if (!params.empty())
+    {
+        quitMessage = params[0];
+        // Si le message commence par ':', l'enlever
+        if (quitMessage[0] == ':')
+            quitMessage = quitMessage.substr(1);
+        
+        // Reconstituer le message complet si il y a des espaces
+        for (size_t i = 1; i < params.size(); i++)
+            quitMessage += " " + params[i];
+    }
+
+    std::string nickname = client.getNickname();
+    std::string username = client.getUsername();
+    std::string hostname = client.getHostname();
+
+    // Construire le prefix complet (nick!user@host)
+    std::string prefix;
+    if (!nickname.empty())
+    {
+        prefix = nickname;
+        if (!username.empty())
+            prefix += "!" + username;
+        if (!hostname.empty())
+            prefix += "@" + hostname;
+    }
+    else
+    {
+        prefix = "*"; // Fallback si pas de nickname
+    }
+
+    std::cout << "Client FD=" << fd << " (" << (nickname.empty() ? "unknown" : nickname) 
+              << ") disconnecting: " << quitMessage << std::endl;
+
+    // TODO: Plus tard, notifier tous les canaux où le client était présent
+    // Pour chaque canal où le client est membre :
+    // - Envoyer ":nick!user@host QUIT :message" à tous les autres membres
+    // - Retirer le client du canal
+    // - Supprimer le canal s'il devient vide
+
+    // Envoyer la confirmation de QUIT au client lui-même
+    if (client.isRegistered())
+    {
+        std::string quitResponse = ":" + prefix + " QUIT :Quit: " + quitMessage + "\r\n";
+        send(fd, quitResponse.c_str(), quitResponse.length(), 0);
+    }
+
+    // Fermer la connexion et nettoyer les ressources
+    // Note: Server::removeClient() se chargera du nettoyage
+    close(fd);
+    
+    // Le client sera automatiquement retiré de _pollfds et _clients 
+    // par Server::removeClient() qui sera appelé dans la boucle principale
+    // quand recv() retournera 0
 }
 
 void CommandHandler::sendResponse(int fd, const std::string& message)

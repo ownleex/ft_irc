@@ -28,6 +28,9 @@ class CommandHandler
         // USER
         void handleUser(int fd, const std::vector<std::string>& params);
 
+        // QUIT
+        void handleQuit(int fd, const std::vector<std::string>& params);
+
     public:
         CommandHandler(Server* server);
         ~CommandHandler();
