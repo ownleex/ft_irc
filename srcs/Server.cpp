@@ -117,3 +117,28 @@ void Server::removeClient(int fd)
         }
     }
 }
+
+Channel* Server::getChannel(const std::string& name)
+{
+    std::map<std::string, Channel>::iterator it = _channels.find(name);
+    if (it != _channels.end())
+        return &(it->second);
+    return NULL;
+}
+
+Channel& Server::createChannel(const std::string& name)
+{
+    std::pair<std::map<std::string, Channel>::iterator, bool> result;
+    result = _channels.insert(std::make_pair(name, Channel(name)));
+    return result.first->second;
+}
+
+void Server::removeChannel(const std::string& name)
+{
+    std::map<std::string, Channel>::iterator it = _channels.find(name);
+    if (it != _channels.end() && it->second.isEmpty())
+    {
+        std::cout << "Channel " << name << " is empty, removing." << std::endl;
+        _channels.erase(it);
+    }
+}

@@ -11,10 +11,12 @@
 #include <netinet/in.h>
 #include <poll.h>
 #include "Client.hpp"
+#include "Channel.hpp"
 #include "CommandHandler.hpp"
 
 class Client;
 class CommandHandler;
+class Channel;
 
 class Server
 {
@@ -25,6 +27,7 @@ class Server
         std::vector<pollfd> _pollfds;
         std::map<int, Client> _clients;
         CommandHandler* _commandHandler;
+        std::map<std::string, Channel> _channels;
 
         void initSocket();
         void newConnection();
@@ -40,4 +43,8 @@ class Server
         // Getters
         std::map<int, Client>& getClients() { return _clients; }
         const std::string& getPassword() const { return _password; }
+
+        Channel* getChannel(const std::string& name);
+        Channel& createChannel(const std::string& name);
+        void removeChannel(const std::string& name);
 };
