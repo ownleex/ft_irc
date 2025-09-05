@@ -74,7 +74,7 @@ void CommandHandler::executeCommand(int fd, const std::string& command)
     }
     else if (cmd == "NICK")
     {
-        std::cout << "-> Will handle NICK command later" << std::endl;
+        handleNick(fd, params);
     }
     else if (cmd == "USER")
     {
@@ -100,11 +100,11 @@ void CommandHandler::handlePass(int fd, const std::vector<std::string>& params)
 
     Client& client = clientIt->second;
 
-    // Vérifier si le client est déjà enregistré
-    if (client.isRegistered())
+    // Vérifier si le client est déjà authentifié
+    if (client.isAuthenticated())
     {
-        // ERR_ALREADYREGISTERED (462)
-        sendResponse(fd, "462 " + client.getNickname() + " :You may not reregister\r\n");
+        // ERR_ALREADYREGISTERED (462) 
+        sendResponse(fd, "462 * :You may not reregister\r\n");
         return;
     }
 
@@ -134,8 +134,8 @@ void CommandHandler::handlePass(int fd, const std::vector<std::string>& params)
     client.setAuthenticated(true);
     std::cout << "Client FD=" << fd << " authenticated successfully" << std::endl;
     
-    // Pas de réponse spécifique pour PASS selon le RFC, 
-    // mais on peut logger le succès
+    // Optionnel : envoyer une confirmation (pas obligatoire selon RFC)
+    // sendResponse(fd, "NOTICE * :Password accepted\r\n");
 }
 
 // Utilitaires
@@ -159,6 +159,120 @@ std::vector<std::string> CommandHandler::split(const std::string& str, char deli
     if (!token.empty())
         tokens.push_back(token);
     return tokens;
+}
+
+void CommandHandler::handleNick(int fd, const std::vector<std::string>& params)
+{
+    if (!_server)
+        return;
+
+    std::map<int, Client>& clients = _server->getClients();
+    std::map<int, Client>::iterator clientIt = clients.find(fd);
+    if (clientIt == clients.end())
+        return;
+
+    Client& client = clientIt->second;
+
+    // Vérifier qu'il y a bien un paramètre (le nickname)
+    if (params.empty())
+    {
+        // ERR_NONICKNAMEGIVEN (431)
+        std::string nick = client.getNickname().empty() ? "*" : client.getNickname();
+        sendResponse(fd, "431 " + nick + " :No nickname given\r\n");
+        return;
+    }
+
+    std::string newNick = params[0];
+
+    // Vérifier que le nickname est valide (commence par lettre, contient lettres/chiffres/_-)
+    if (!isValidNickname(newNick))
+    {
+        // ERR_ERRONEUSNICKNAME (432)
+        std::string nick = client.getNickname().empty() ? "*" : client.getNickname();
+        sendResponse(fd, "432 " + nick + " " + newNick + " :Erroneous nickname\r\n");
+        return;
+    }
+
+    // Vérifier que le nickname n'est pas déjà utilisé
+    if (isNicknameInUse(newNick, fd))
+    {
+        // ERR_NICKNAMEINUSE (433)
+        std::string nick = client.getNickname().empty() ? "*" : client.getNickname();
+        sendResponse(fd, "433 " + nick + " " + newNick + " :Nickname is already in use\r\n");
+        return;
+    }
+
+    // Sauvegarder l'ancien nickname pour les notifications
+    std::string oldNick = client.getNickname();
+    
+    // Définir le nouveau nickname
+    client.setNickname(newNick);
+    
+    if (!oldNick.empty())
+    {
+        // Si le client avait déjà un nickname, notifier le changement
+        std::string nickMsg = ":" + oldNick + " NICK " + newNick + "\r\n";
+        sendResponse(fd, nickMsg);
+        std::cout << "Client FD=" << fd << " changed nickname from " << oldNick << " to " << newNick << std::endl;
+        
+        // TODO: Plus tard, notifier tous les canaux où le client est présent
+    }
+    else
+    {
+        std::cout << "Client FD=" << fd << " set nickname to " << newNick << std::endl;
+    }
+
+    // Vérifier si le client peut maintenant être considéré comme enregistré
+    // (authentifié + nickname + username définis)
+    if (client.isAuthenticated() && !client.getNickname().empty() && 
+        !client.getUsername().empty() && !client.isRegistered())
+    {
+        client.setRegistered(true);
+        
+        // Envoyer les messages de bienvenue
+        sendResponse(fd, "001 " + newNick + " :Welcome to the Internet Relay Network " + newNick + "\r\n");
+        sendResponse(fd, "002 " + newNick + " :Your host is ircserv, running version 1.0\r\n");
+        sendResponse(fd, "003 " + newNick + " :This server was created today\r\n");
+        sendResponse(fd, "004 " + newNick + " ircserv 1.0 o o\r\n");
+        
+        std::cout << "Client FD=" << fd << " (" << newNick << ") is now fully registered" << std::endl;
+    }
+}
+
+bool CommandHandler::isValidNickname(const std::string& nick)
+{
+    if (nick.empty() || nick.length() > 9) // RFC 1459: max 9 caractères
+        return false;
+    
+    // Premier caractère doit être une lettre
+    if (!std::isalpha(nick[0]))
+        return false;
+    
+    // Les autres caractères peuvent être lettres, chiffres, - ou _
+    for (size_t i = 1; i < nick.length(); i++)
+    {
+        char c = nick[i];
+        if (!std::isalnum(c) && c != '-' && c != '_')
+            return false;
+    }
+    
+    return true;
+}
+
+bool CommandHandler::isNicknameInUse(const std::string& nick, int excludeFd)
+{
+    if (!_server)
+        return false;
+        
+    std::map<int, Client>& clients = _server->getClients();
+    
+    for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it)
+    {
+        if (it->first != excludeFd && it->second.getNickname() == nick)
+            return true;
+    }
+    
+    return false;
 }
 
 void CommandHandler::sendResponse(int fd, const std::string& message)

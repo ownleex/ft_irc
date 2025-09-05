@@ -19,6 +19,11 @@ class CommandHandler
 
         void handlePass(int fd, const std::vector<std::string>& params);
 
+        // gestion NICK
+        void handleNick(int fd, const std::vector<std::string>& params);
+        bool isValidNickname(const std::string& nick);
+        bool isNicknameInUse(const std::string& nick, int excludeFd = -1);
+
     public:
         CommandHandler(Server* server);
         ~CommandHandler();
