@@ -116,7 +116,7 @@ void CommandHandler::handlePass(int fd, const std::vector<std::string>& params)
     if (client.isAuthenticated())
     {
         // ERR_ALREADYREGISTERED (462) 
-        sendResponse(fd, "462 * :You may not reregister\r\n");
+        sendResponse(fd, ":ircserv 462 * :You may not reregister\r\n");
         return;
     }
 
@@ -124,7 +124,7 @@ void CommandHandler::handlePass(int fd, const std::vector<std::string>& params)
     if (params.empty())
     {
         // ERR_NEEDMOREPARAMS (461)
-        sendResponse(fd, "461 * PASS :Not enough parameters\r\n");
+        sendResponse(fd, ":ircserv 461 * PASS :Not enough parameters\r\n");
         return;
     }
 
@@ -137,7 +137,7 @@ void CommandHandler::handlePass(int fd, const std::vector<std::string>& params)
     if (providedPassword != serverPassword)
     {
         // ERR_PASSWDMISMATCH (464)
-        sendResponse(fd, "464 * :Password incorrect\r\n");
+        sendResponse(fd, ":ircserv 464 * :Password incorrect\r\n");
         std::cout << "Client FD=" << fd << " provided incorrect password" << std::endl;
         return;
     }
@@ -190,7 +190,7 @@ void CommandHandler::handleNick(int fd, const std::vector<std::string>& params)
     {
         // ERR_NONICKNAMEGIVEN (431)
         std::string nick = client.getNickname().empty() ? "*" : client.getNickname();
-        sendResponse(fd, "431 " + nick + " :No nickname given\r\n");
+        sendResponse(fd, ":ircserv 431 " + nick + " :No nickname given\r\n");
         return;
     }
 
@@ -201,7 +201,7 @@ void CommandHandler::handleNick(int fd, const std::vector<std::string>& params)
     {
         // ERR_ERRONEUSNICKNAME (432)
         std::string nick = client.getNickname().empty() ? "*" : client.getNickname();
-        sendResponse(fd, "432 " + nick + " " + newNick + " :Erroneous nickname\r\n");
+        sendResponse(fd, ":ircserv 432 " + nick + " " + newNick + " :Erroneous nickname\r\n");
         return;
     }
 
@@ -210,7 +210,7 @@ void CommandHandler::handleNick(int fd, const std::vector<std::string>& params)
     {
         // ERR_NICKNAMEINUSE (433)
         std::string nick = client.getNickname().empty() ? "*" : client.getNickname();
-        sendResponse(fd, "433 " + nick + " " + newNick + " :Nickname is already in use\r\n");
+        sendResponse(fd, ":ircserv 433 " + nick + " " + newNick + " :Nickname is already in use\r\n");
         return;
     }
 
@@ -242,10 +242,10 @@ void CommandHandler::handleNick(int fd, const std::vector<std::string>& params)
         client.setRegistered(true);
         
         // Envoyer les messages de bienvenue
-        sendResponse(fd, "001 " + newNick + " :Welcome to the Internet Relay Network " + newNick + "\r\n");
-        sendResponse(fd, "002 " + newNick + " :Your host is ircserv, running version 1.0\r\n");
-        sendResponse(fd, "003 " + newNick + " :This server was created today\r\n");
-        sendResponse(fd, "004 " + newNick + " ircserv 1.0 o o\r\n");
+        sendResponse(fd, ":ircserv 001 " + newNick + " :Welcome to the Internet Relay Network " + newNick + "\r\n");
+        sendResponse(fd, ":ircserv 002 " + newNick + " :Your host is ircserv, running version 1.0\r\n");
+        sendResponse(fd, ":ircserv 003 " + newNick + " :This server was created today\r\n");
+        sendResponse(fd, ":ircserv 004 " + newNick + " ircserv 1.0 o o\r\n");
         
         std::cout << "Client FD=" << fd << " (" << newNick << ") is now fully registered" << std::endl;
     }
@@ -302,7 +302,7 @@ void CommandHandler::handleUser(int fd, const std::vector<std::string>& params)
     // Vérifier que le client est authentifié
     if (!client.isAuthenticated())
     {
-        sendResponse(fd, "451 * :You have not registered\r\n");
+        sendResponse(fd, ":ircserv 451 * :You have not registered\r\n");
         return;
     }
 
@@ -311,7 +311,7 @@ void CommandHandler::handleUser(int fd, const std::vector<std::string>& params)
     {
         // ERR_NEEDMOREPARAMS (461)
         std::string nick = client.getNickname().empty() ? "*" : client.getNickname();
-        sendResponse(fd, "461 " + nick + " USER :Not enough parameters\r\n");
+        sendResponse(fd, ":ircserv 461 " + nick + " USER :Not enough parameters\r\n");
         return;
     }
 
@@ -319,7 +319,7 @@ void CommandHandler::handleUser(int fd, const std::vector<std::string>& params)
     if (client.isRegistered())
     {
         // ERR_ALREADYREGISTERED (462)
-        sendResponse(fd, "462 " + client.getNickname() + " :You may not reregister\r\n");
+        sendResponse(fd, ":ircserv 462 " + client.getNickname() + " :You may not reregister\r\n");
         return;
     }
 
@@ -355,10 +355,10 @@ void CommandHandler::handleUser(int fd, const std::vector<std::string>& params)
         std::string userhost = nick + "!" + username + "@" + client.getHostname();
         
         // Envoyer les messages de bienvenue (RPL_WELCOME, etc.)
-        sendResponse(fd, "001 " + nick + " :Welcome to the Internet Relay Network " + userhost + "\r\n");
-        sendResponse(fd, "002 " + nick + " :Your host is ircserv, running version 1.0\r\n");
-        sendResponse(fd, "003 " + nick + " :This server was created today\r\n");
-        sendResponse(fd, "004 " + nick + " ircserv 1.0 o o\r\n");
+        sendResponse(fd, ":ircserv 001 " + nick + " :Welcome to the Internet Relay Network " + userhost + "\r\n");
+        sendResponse(fd, ":ircserv 002 " + nick + " :Your host is ircserv, running version 1.0\r\n");
+        sendResponse(fd, ":ircserv 003 " + nick + " :This server was created today\r\n");
+        sendResponse(fd, ":ircserv 004 " + nick + " ircserv 1.0 o o\r\n");
         
         std::cout << "Client FD=" << fd << " (" << nick << ") is now fully registered" << std::endl;
     }
@@ -379,7 +379,7 @@ void CommandHandler::handleJoin(int fd, const std::vector<std::string>& params)
     // Vérifier que le client est enregistré
     if (!client.isRegistered())
     {
-        sendResponse(fd, "451 * :You have not registered\r\n");
+        sendResponse(fd, ":ircserv 451 * :You have not registered\r\n");
         return;
     }
 
@@ -387,7 +387,7 @@ void CommandHandler::handleJoin(int fd, const std::vector<std::string>& params)
     if (params.empty())
     {
         // ERR_NEEDMOREPARAMS (461)
-        sendResponse(fd, "461 " + client.getNickname() + " JOIN :Not enough parameters\r\n");
+        sendResponse(fd, ":ircserv 461 " + client.getNickname() + " JOIN :Not enough parameters\r\n");
         return;
     }
 
@@ -408,7 +408,7 @@ void CommandHandler::handleJoin(int fd, const std::vector<std::string>& params)
         if (channelName.empty() || (channelName[0] != '#' && channelName[0] != '&'))
         {
             // ERR_NOSUCHCHANNEL (403)
-            sendResponse(fd, "403 " + client.getNickname() + " " + channelName + " :No such channel\r\n");
+            sendResponse(fd, ":ircserv 403 " + client.getNickname() + " " + channelName + " :No such channel\r\n");
             continue;
         }
 
@@ -434,17 +434,17 @@ void CommandHandler::handleJoin(int fd, const std::vector<std::string>& params)
             if (channel->getUserLimit() > 0 && channel->getMemberCount() >= static_cast<size_t>(channel->getUserLimit()))
             {
                 // ERR_CHANNELISFULL (471)
-                sendResponse(fd, "471 " + client.getNickname() + " " + channelName + " :Cannot join channel (+l)\r\n");
+                sendResponse(fd, ":ircserv 471 " + client.getNickname() + " " + channelName + " :Cannot join channel (+l)\r\n");
             }
             else if (channel->isInviteOnly() && !channel->isInvited(fd))
             {
                 // ERR_INVITEONLYCHAN (473)
-                sendResponse(fd, "473 " + client.getNickname() + " " + channelName + " :Cannot join channel (+i)\r\n");
+                sendResponse(fd, ":ircserv 473 " + client.getNickname() + " " + channelName + " :Cannot join channel (+i)\r\n");
             }
             else if (channel->hasPassword() && password != channel->getPassword())
             {
                 // ERR_BADCHANNELKEY (475)
-                sendResponse(fd, "475 " + client.getNickname() + " " + channelName + " :Cannot join channel (+k)\r\n");
+                sendResponse(fd, ":ircserv 475 " + client.getNickname() + " " + channelName + " :Cannot join channel (+k)\r\n");
             }
             continue;
         }
@@ -547,7 +547,7 @@ void CommandHandler::handleTopic(int fd, const std::vector<std::string>& params)
     // Vérifier que le client est enregistré
     if (!client.isRegistered())
     {
-        sendResponse(fd, "451 * :You have not registered\r\n");
+        sendResponse(fd, ":ircserv 451 * :You have not registered\r\n");
         return;
     }
 
@@ -555,7 +555,7 @@ void CommandHandler::handleTopic(int fd, const std::vector<std::string>& params)
     if (params.empty())
     {
         // ERR_NEEDMOREPARAMS (461)
-        sendResponse(fd, "461 " + client.getNickname() + " TOPIC :Not enough parameters\r\n");
+        sendResponse(fd, ":ircserv 461 " + client.getNickname() + " TOPIC :Not enough parameters\r\n");
         return;
     }
 
@@ -567,7 +567,7 @@ void CommandHandler::handleTopic(int fd, const std::vector<std::string>& params)
     if (!channel)
     {
         // ERR_NOSUCHCHANNEL (403)
-        sendResponse(fd, "403 " + nick + " " + channelName + " :No such channel\r\n");
+        sendResponse(fd, ":ircserv 403 " + nick + " " + channelName + " :No such channel\r\n");
         return;
     }
 
@@ -575,7 +575,7 @@ void CommandHandler::handleTopic(int fd, const std::vector<std::string>& params)
     if (!channel->isMember(fd))
     {
         // ERR_NOTONCHANNEL (442)
-        sendResponse(fd, "442 " + nick + " " + channelName + " :You're not on that channel\r\n");
+        sendResponse(fd, ":ircserv 442 " + nick + " " + channelName + " :You're not on that channel\r\n");
         return;
     }
 
@@ -585,12 +585,12 @@ void CommandHandler::handleTopic(int fd, const std::vector<std::string>& params)
         if (channel->getTopic().empty())
         {
             // RPL_NOTOPIC (331)
-            sendResponse(fd, "331 " + nick + " " + channelName + " :No topic is set\r\n");
+            sendResponse(fd, ":ircserv 331 " + nick + " " + channelName + " :No topic is set\r\n");
         }
         else
         {
             // RPL_TOPIC (332)
-            sendResponse(fd, "332 " + nick + " " + channelName + " :" + channel->getTopic() + "\r\n");
+            sendResponse(fd, ":ircserv 332 " + nick + " " + channelName + " :" + channel->getTopic() + "\r\n");
         }
         return;
     }
@@ -601,7 +601,7 @@ void CommandHandler::handleTopic(int fd, const std::vector<std::string>& params)
     if (channel->isTopicRestricted() && !channel->isOperator(fd))
     {
         // ERR_CHANOPRIVSNEEDED (482)
-        sendResponse(fd, "482 " + nick + " " + channelName + " :You're not channel operator\r\n");
+        sendResponse(fd, ":ircserv 482 " + nick + " " + channelName + " :You're not channel operator\r\n");
         return;
     }
 
