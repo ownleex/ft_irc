@@ -476,11 +476,11 @@ void CommandHandler::handleJoin(int fd, const std::vector<std::string>& params)
             // Envoyer le topic du canal s'il existe
             if (!channel->getTopic().empty())
             {
-                sendResponse(fd, "332 " + nick + " " + channelName + " :" + channel->getTopic() + "\r\n");
+                sendResponse(fd, ":ircserv 332 " + nick + " " + channelName + " :" + channel->getTopic() + "\r\n");
             }
             else
             {
-                sendResponse(fd, "331 " + nick + " " + channelName + " :No topic is set\r\n");
+                sendResponse(fd, ":ircserv 331 " + nick + " " + channelName + " :No topic is set\r\n");
             }
 
             // Envoyer la liste des utilisateurs SEULEMENT au nouveau client
@@ -526,10 +526,10 @@ void CommandHandler::sendNamesList(int fd, const std::string& channelName, Chann
     std::cout << "Sending NAMES to " << nick << " for " << channelName << ": " << namesList << std::endl;
 
     // RPL_NAMREPLY (353) - IMPORTANT: le = indique un canal public
-    sendResponse(fd, "353 " + nick + " = " + channelName + " :" + namesList + "\r\n");
-    
+    sendResponse(fd, ":ircserv 353 " + nick + " = " + channelName + " :" + namesList + "\r\n");
+
     // RPL_ENDOFNAMES (366)
-    sendResponse(fd, "366 " + nick + " " + channelName + " :End of /NAMES list\r\n");
+    sendResponse(fd, ":ircserv 366 " + nick + " " + channelName + " :End of /NAMES list\r\n");
 }
 
 void CommandHandler::handleTopic(int fd, const std::vector<std::string>& params)
