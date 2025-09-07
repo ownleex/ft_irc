@@ -80,6 +80,14 @@ void CommandHandler::executeCommand(int fd, const std::string& command)
     {
         handleUser(fd, params);
     }
+    else if (cmd == "JOIN")
+    {
+        handleJoin(fd, params);
+    }
+    else if (cmd == "TOPIC")
+    {
+        handleTopic(fd, params);
+    }
     else if (cmd == "QUIT")
     {
         handleQuit(fd, params);
@@ -354,6 +362,277 @@ void CommandHandler::handleUser(int fd, const std::vector<std::string>& params)
         
         std::cout << "Client FD=" << fd << " (" << nick << ") is now fully registered" << std::endl;
     }
+}
+
+void CommandHandler::handleJoin(int fd, const std::vector<std::string>& params)
+{
+    if (!_server)
+        return;
+
+    std::map<int, Client>& clients = _server->getClients();
+    std::map<int, Client>::iterator clientIt = clients.find(fd);
+    if (clientIt == clients.end())
+        return;
+
+    Client& client = clientIt->second;
+
+    // Vérifier que le client est enregistré
+    if (!client.isRegistered())
+    {
+        sendResponse(fd, "451 * :You have not registered\r\n");
+        return;
+    }
+
+    // Vérifier qu'il y a au moins un paramètre (nom du canal)
+    if (params.empty())
+    {
+        // ERR_NEEDMOREPARAMS (461)
+        sendResponse(fd, "461 " + client.getNickname() + " JOIN :Not enough parameters\r\n");
+        return;
+    }
+
+    // Parser les canaux et mots de passe
+    std::string channelList = params[0];
+    std::string passwordList = params.size() > 1 ? params[1] : "";
+
+    std::vector<std::string> channels = split(channelList, ',');
+    std::vector<std::string> passwords = split(passwordList, ',');
+
+    // Joindre chaque canal
+    for (size_t i = 0; i < channels.size(); i++)
+    {
+        std::string channelName = channels[i];
+        std::string password = (i < passwords.size()) ? passwords[i] : "";
+
+        // Vérifier que le nom du canal est valide (commence par # ou &)
+        if (channelName.empty() || (channelName[0] != '#' && channelName[0] != '&'))
+        {
+            // ERR_NOSUCHCHANNEL (403)
+            sendResponse(fd, "403 " + client.getNickname() + " " + channelName + " :No such channel\r\n");
+            continue;
+        }
+
+        // Vérifier si le client est déjà dans le canal
+        Channel* channel = _server->getChannel(channelName);
+        if (channel && channel->isMember(fd))
+        {
+            // Le client est déjà dans le canal, on ignore
+            continue;
+        }
+
+        // Créer le canal s'il n'existe pas
+        if (!channel)
+        {
+            channel = &_server->createChannel(channelName);
+            std::cout << "Created new channel: " << channelName << std::endl;
+        }
+
+        // Vérifier si le client peut rejoindre le canal
+        if (!channel->canJoin(fd, password))
+        {
+            // Vérifier la raison spécifique
+            if (channel->getUserLimit() > 0 && channel->getMemberCount() >= static_cast<size_t>(channel->getUserLimit()))
+            {
+                // ERR_CHANNELISFULL (471)
+                sendResponse(fd, "471 " + client.getNickname() + " " + channelName + " :Cannot join channel (+l)\r\n");
+            }
+            else if (channel->isInviteOnly() && !channel->isInvited(fd))
+            {
+                // ERR_INVITEONLYCHAN (473)
+                sendResponse(fd, "473 " + client.getNickname() + " " + channelName + " :Cannot join channel (+i)\r\n");
+            }
+            else if (channel->hasPassword() && password != channel->getPassword())
+            {
+                // ERR_BADCHANNELKEY (475)
+                sendResponse(fd, "475 " + client.getNickname() + " " + channelName + " :Cannot join channel (+k)\r\n");
+            }
+            continue;
+        }
+
+        // Ajouter le client au canal
+        if (channel->addMember(fd))
+        {
+            // Supprimer l'invitation si elle existait
+            channel->removeInvited(fd);
+
+            std::string nick = client.getNickname();
+            std::string user = client.getUsername();
+            std::string host = client.getHostname();
+            std::string fullMask = nick + "!" + user + "@" + host;
+
+            // Envoyer JOIN à TOUS les membres du canal (y compris le nouveau)
+            std::string joinMsg = ":" + fullMask + " JOIN " + channelName + "\r\n";
+            std::vector<int> members = channel->getAllMembers();
+            
+            for (size_t j = 0; j < members.size(); j++)
+            {
+                sendResponse(members[j], joinMsg);
+            }
+
+            std::cout << "Client " << nick << " joined channel " << channelName << std::endl;
+
+            // Les messages suivants vont SEULEMENT au nouveau client
+            
+            // Envoyer le topic du canal s'il existe
+            if (!channel->getTopic().empty())
+            {
+                sendResponse(fd, "332 " + nick + " " + channelName + " :" + channel->getTopic() + "\r\n");
+            }
+            else
+            {
+                sendResponse(fd, "331 " + nick + " " + channelName + " :No topic is set\r\n");
+            }
+
+            // Envoyer la liste des utilisateurs SEULEMENT au nouveau client
+            sendNamesList(fd, channelName, channel);
+        }
+    }
+}
+
+// Fonction utilitaire pour envoyer la liste des noms
+void CommandHandler::sendNamesList(int fd, const std::string& channelName, Channel* channel)
+{
+    if (!_server || !channel)
+        return;
+
+    std::map<int, Client>& clients = _server->getClients();
+    std::map<int, Client>::iterator clientIt = clients.find(fd);
+    if (clientIt == clients.end())
+        return;
+
+    std::string nick = clientIt->second.getNickname();
+    std::string namesList = "";
+    
+    std::vector<int> members = channel->getAllMembers();
+    
+    // Construire la liste des noms
+    for (size_t i = 0; i < members.size(); i++)
+    {
+        std::map<int, Client>::iterator memberIt = clients.find(members[i]);
+        if (memberIt != clients.end())
+        {
+            if (!namesList.empty())
+                namesList += " ";
+            
+            // Ajouter @ pour les opérateurs, + pour les voices (si implémenté)
+            if (channel->isOperator(members[i]))
+                namesList += "@";
+            
+            namesList += memberIt->second.getNickname();
+        }
+    }
+
+    // Debug pour voir ce qu'on envoie
+    std::cout << "Sending NAMES to " << nick << " for " << channelName << ": " << namesList << std::endl;
+
+    // RPL_NAMREPLY (353) - IMPORTANT: le = indique un canal public
+    sendResponse(fd, "353 " + nick + " = " + channelName + " :" + namesList + "\r\n");
+    
+    // RPL_ENDOFNAMES (366)
+    sendResponse(fd, "366 " + nick + " " + channelName + " :End of /NAMES list\r\n");
+}
+
+void CommandHandler::handleTopic(int fd, const std::vector<std::string>& params)
+{
+    if (!_server)
+        return;
+
+    std::map<int, Client>& clients = _server->getClients();
+    std::map<int, Client>::iterator clientIt = clients.find(fd);
+    if (clientIt == clients.end())
+        return;
+
+    Client& client = clientIt->second;
+
+    // Vérifier que le client est enregistré
+    if (!client.isRegistered())
+    {
+        sendResponse(fd, "451 * :You have not registered\r\n");
+        return;
+    }
+
+    // Vérifier qu'il y a au moins un paramètre (nom du canal)
+    if (params.empty())
+    {
+        // ERR_NEEDMOREPARAMS (461)
+        sendResponse(fd, "461 " + client.getNickname() + " TOPIC :Not enough parameters\r\n");
+        return;
+    }
+
+    std::string channelName = params[0];
+    std::string nick = client.getNickname();
+
+    // Vérifier que le canal existe
+    Channel* channel = _server->getChannel(channelName);
+    if (!channel)
+    {
+        // ERR_NOSUCHCHANNEL (403)
+        sendResponse(fd, "403 " + nick + " " + channelName + " :No such channel\r\n");
+        return;
+    }
+
+    // Vérifier que le client est membre du canal
+    if (!channel->isMember(fd))
+    {
+        // ERR_NOTONCHANNEL (442)
+        sendResponse(fd, "442 " + nick + " " + channelName + " :You're not on that channel\r\n");
+        return;
+    }
+
+    // Si pas de deuxième paramètre, afficher le topic actuel
+    if (params.size() == 1)
+    {
+        if (channel->getTopic().empty())
+        {
+            // RPL_NOTOPIC (331)
+            sendResponse(fd, "331 " + nick + " " + channelName + " :No topic is set\r\n");
+        }
+        else
+        {
+            // RPL_TOPIC (332)
+            sendResponse(fd, "332 " + nick + " " + channelName + " :" + channel->getTopic() + "\r\n");
+        }
+        return;
+    }
+
+    // Sinon, modifier le topic
+    
+    // Vérifier les permissions si le mode +t est activé
+    if (channel->isTopicRestricted() && !channel->isOperator(fd))
+    {
+        // ERR_CHANOPRIVSNEEDED (482)
+        sendResponse(fd, "482 " + nick + " " + channelName + " :You're not channel operator\r\n");
+        return;
+    }
+
+    // Construire le nouveau topic
+    std::string newTopic = params[1];
+    
+    // Si le topic commence par ':', l'enlever
+    if (!newTopic.empty() && newTopic[0] == ':')
+        newTopic = newTopic.substr(1);
+    
+    // Reconstituer le topic complet si il y a des espaces
+    for (size_t i = 2; i < params.size(); i++)
+        newTopic += " " + params[i];
+
+    // Définir le nouveau topic
+    channel->setTopic(newTopic);
+
+    std::string user = client.getUsername();
+    std::string host = client.getHostname();
+    std::string fullMask = nick + "!" + user + "@" + host;
+
+    // Notifier tous les membres du canal du changement de topic
+    std::string topicMsg = ":" + fullMask + " TOPIC " + channelName + " :" + newTopic + "\r\n";
+    std::vector<int> members = channel->getAllMembers();
+    
+    for (size_t i = 0; i < members.size(); i++)
+    {
+        sendResponse(members[i], topicMsg);
+    }
+
+    std::cout << "Topic changed in " << channelName << " by " << nick << ": " << newTopic << std::endl;
 }
 
 void CommandHandler::handleQuit(int fd, const std::vector<std::string>& params)

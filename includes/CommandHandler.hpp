@@ -7,6 +7,7 @@
 // Forward declarations
 class Server;
 class Client;
+class Channel;
 
 class CommandHandler
 {
@@ -27,6 +28,13 @@ class CommandHandler
 
         // USER
         void handleUser(int fd, const std::vector<std::string>& params);
+
+        // JOIN
+        void handleJoin(int fd, const std::vector<std::string>& params);
+        void sendNamesList(int fd, const std::string& channelName, Channel* channel);
+
+        // TOPIC
+        void handleTopic(int fd, const std::vector<std::string>& params);
 
         // QUIT
         void handleQuit(int fd, const std::vector<std::string>& params);

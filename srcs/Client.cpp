@@ -93,3 +93,23 @@ void Client::appendToBuffer(const std::string &data)
 {
     _buffer += data;
 }
+
+void Client::joinChannel(const std::string& channelName)
+{
+    _channels.insert(channelName);
+}
+
+void Client::leaveChannel(const std::string& channelName)
+{
+    _channels.erase(channelName);
+}
+
+bool Client::isInChannel(const std::string& channelName) const
+{
+    return _channels.find(channelName) != _channels.end();
+}
+
+const std::set<std::string>& Client::getChannels() const
+{
+    return _channels;
+}

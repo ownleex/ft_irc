@@ -43,4 +43,10 @@ class Client
 
         void appendToBuffer(const std::string &data);
 
+        // Gestion des canaux
+        void joinChannel(const std::string& channelName);
+        void leaveChannel(const std::string& channelName);
+        bool isInChannel(const std::string& channelName) const;
+        const std::set<std::string>& getChannels() const;
+
 };
