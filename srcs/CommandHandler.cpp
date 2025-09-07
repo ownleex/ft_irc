@@ -88,6 +88,10 @@ void CommandHandler::executeCommand(int fd, const std::string& command)
     {
         handleTopic(fd, params);
     }
+    else if (cmd == "PART")
+    {
+        handlePart(fd, params);
+    }
     else if (cmd == "QUIT")
     {
         handleQuit(fd, params);
@@ -635,6 +639,108 @@ void CommandHandler::handleTopic(int fd, const std::vector<std::string>& params)
     std::cout << "Topic changed in " << channelName << " by " << nick << ": " << newTopic << std::endl;
 }
 
+void CommandHandler::handlePart(int fd, const std::vector<std::string>& params)
+{
+    if (!_server)
+        return;
+
+    std::map<int, Client>& clients = _server->getClients();
+    std::map<int, Client>::iterator clientIt = clients.find(fd);
+    if (clientIt == clients.end())
+        return;
+
+    Client& client = clientIt->second;
+
+    // Vérifier que le client est enregistré
+    if (!client.isRegistered())
+    {
+        sendResponse(fd, ":ircserv 451 * :You have not registered\r\n");
+        return;
+    }
+
+    // Vérifier qu'il y a au moins un paramètre (nom du canal)
+    if (params.empty())
+    {
+        // ERR_NEEDMOREPARAMS (461)
+        sendResponse(fd, ":ircserv 461 " + client.getNickname() + " PART :Not enough parameters\r\n");
+        return;
+    }
+
+    // Parser les canaux (PART peut accepter plusieurs canaux séparés par des virgules)
+    std::string channelList = params[0];
+    std::vector<std::string> channels = split(channelList, ',');
+
+    // Message de départ optionnel
+    std::string partMessage = "";
+    if (params.size() > 1)
+    {
+        partMessage = params[1];
+        // Si le message commence par ':', l'enlever
+        if (!partMessage.empty() && partMessage[0] == ':')
+            partMessage = partMessage.substr(1);
+        
+        // Reconstituer le message complet si il y a des espaces
+        for (size_t i = 2; i < params.size(); i++)
+            partMessage += " " + params[i];
+    }
+
+    std::string nick = client.getNickname();
+    std::string user = client.getUsername();
+    std::string host = client.getHostname();
+    std::string fullMask = nick + "!" + user + "@" + host;
+
+    // Traiter chaque canal
+    for (size_t i = 0; i < channels.size(); i++)
+    {
+        std::string channelName = channels[i];
+
+        // Vérifier que le canal existe
+        Channel* channel = _server->getChannel(channelName);
+        if (!channel)
+        {
+            // ERR_NOSUCHCHANNEL (403)
+            sendResponse(fd, ":ircserv 403 " + nick + " " + channelName + " :No such channel\r\n");
+            continue;
+        }
+
+        // Vérifier que le client est membre du canal
+        if (!channel->isMember(fd))
+        {
+            // ERR_NOTONCHANNEL (442)
+            sendResponse(fd, ":ircserv 442 " + nick + " " + channelName + " :You're not on that channel\r\n");
+            continue;
+        }
+
+        // Construire le message PART
+        std::string partResponse = ":" + fullMask + " PART " + channelName;
+        if (!partMessage.empty())
+            partResponse += " :" + partMessage;
+        partResponse += "\r\n";
+
+        // Envoyer le message à TOUS les membres du canal (y compris celui qui part)
+        std::vector<int> members = channel->getAllMembers();
+        for (size_t j = 0; j < members.size(); j++)
+        {
+            sendResponse(members[j], partResponse);
+        }
+
+        std::cout << "Client " << nick << " left channel " << channelName;
+        if (!partMessage.empty())
+            std::cout << " (" << partMessage << ")";
+        std::cout << std::endl;
+
+        // Retirer le client du canal
+        channel->removeMember(fd);
+        client.leaveChannel(channelName);
+
+        // Supprimer le canal s'il devient vide
+        if (channel->isEmpty())
+        {
+            _server->removeChannel(channelName);
+        }
+    }
+}
+
 void CommandHandler::handleQuit(int fd, const std::vector<std::string>& params)
 {
     if (!_server)
@@ -683,11 +789,54 @@ void CommandHandler::handleQuit(int fd, const std::vector<std::string>& params)
     std::cout << "Client FD=" << fd << " (" << (nickname.empty() ? "unknown" : nickname) 
               << ") disconnecting: " << quitMessage << std::endl;
 
-    // TODO: Plus tard, notifier tous les canaux où le client était présent
-    // Pour chaque canal où le client est membre :
-    // - Envoyer ":nick!user@host QUIT :message" à tous les autres membres
-    // - Retirer le client du canal
-    // - Supprimer le canal s'il devient vide
+    // 📢 NOUVEAU : Notifier tous les canaux où le client était présent
+    if (client.isRegistered() && !nickname.empty())
+    {
+        std::string quitNotification = ":" + prefix + " QUIT :Quit: " + quitMessage + "\r\n";
+        
+        // Obtenir la liste des canaux du client
+        const std::set<std::string>& clientChannels = client.getChannels();
+        std::set<int> notifiedClients; // Pour éviter de notifier plusieurs fois le même client
+        
+        for (std::set<std::string>::const_iterator channelIt = clientChannels.begin(); 
+             channelIt != clientChannels.end(); ++channelIt)
+        {
+            const std::string& channelName = *channelIt;
+            Channel* channel = _server->getChannel(channelName);
+            
+            if (channel)
+            {
+                std::cout << "Notifying channel " << channelName << " of " << nickname << "'s quit" << std::endl;
+                
+                // Obtenir tous les membres du canal
+                std::vector<int> members = channel->getAllMembers();
+                
+                for (size_t i = 0; i < members.size(); i++)
+                {
+                    int memberFd = members[i];
+                    
+                    // Ne pas notifier le client qui quitte, et éviter les doublons
+                    if (memberFd != fd && notifiedClients.find(memberFd) == notifiedClients.end())
+                    {
+                        sendResponse(memberFd, quitNotification);
+                        notifiedClients.insert(memberFd);
+                    }
+                }
+                
+                // Retirer le client du canal
+                channel->removeMember(fd);
+                
+                // Supprimer le canal s'il devient vide
+                if (channel->isEmpty())
+                {
+                    _server->removeChannel(channelName);
+                }
+            }
+        }
+        
+        // Nettoyer la liste des canaux du client
+        // (Ceci sera fait automatiquement quand le client sera supprimé)
+    }
 
     // Envoyer la confirmation de QUIT au client lui-même
     if (client.isRegistered())
@@ -696,13 +845,12 @@ void CommandHandler::handleQuit(int fd, const std::vector<std::string>& params)
         send(fd, quitResponse.c_str(), quitResponse.length(), 0);
     }
 
-    // Fermer la connexion et nettoyer les ressources
-    // Note: Server::removeClient() se chargera du nettoyage
+    // Fermer la connexion
     close(fd);
     
-    // Le client sera automatiquement retiré de _pollfds et _clients 
+    // Note: Le client sera automatiquement retiré de _pollfds et _clients 
     // par Server::removeClient() qui sera appelé dans la boucle principale
-    // quand recv() retournera 0
+    // quand recv() retournera 0 ou quand on détecte que la connexion est fermée
 }
 
 void CommandHandler::sendResponse(int fd, const std::string& message)

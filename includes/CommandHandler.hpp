@@ -36,6 +36,9 @@ class CommandHandler
         // TOPIC
         void handleTopic(int fd, const std::vector<std::string>& params);
 
+        // PART
+        void handlePart(int fd, const std::vector<std::string>& params);
+
         // QUIT
         void handleQuit(int fd, const std::vector<std::string>& params);
 
