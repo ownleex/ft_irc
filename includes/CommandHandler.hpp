@@ -41,6 +41,9 @@ class CommandHandler
         bool isValidModeChar(char mode);
         void applyChannelMode(Channel* channel, char mode, bool add, const std::string& param);
 
+        // KICK
+        void handleKick(int fd, const std::vector<std::string>& params);
+
         // TOPIC
         void handleTopic(int fd, const std::vector<std::string>& params);
 

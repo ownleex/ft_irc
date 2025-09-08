@@ -92,6 +92,10 @@ void CommandHandler::executeCommand(int fd, const std::string& command)
     {
         handleMode(fd, params);
     }
+    else if (cmd == "KICK")
+    {
+        handleKick(fd, params);
+    }
     else if (cmd == "TOPIC")
     {
         handleTopic(fd, params);
@@ -910,6 +914,137 @@ void CommandHandler::applyChannelMode(Channel* channel, char mode, bool add, con
                 }
             }
             break;
+    }
+}
+
+void CommandHandler::handleKick(int fd, const std::vector<std::string>& params)
+{
+    if (!_server)
+        return;
+
+    std::map<int, Client>& clients = _server->getClients();
+    std::map<int, Client>::iterator clientIt = clients.find(fd);
+    if (clientIt == clients.end())
+        return;
+
+    Client& client = clientIt->second;
+
+    // Vérifier que le client est enregistré
+    if (!client.isRegistered())
+    {
+        sendResponse(fd, ":ircserv 451 * :You have not registered\r\n");
+        return;
+    }
+
+    // Vérifier qu'il y a au moins 2 paramètres (canal et utilisateur)
+    if (params.size() < 2)
+    {
+        // ERR_NEEDMOREPARAMS (461)
+        sendResponse(fd, ":ircserv 461 " + client.getNickname() + " KICK :Not enough parameters\r\n");
+        return;
+    }
+
+    std::string channelName = params[0];
+    std::string targetNick = params[1];
+    std::string kickReason = "No reason given";
+
+    // Construire la raison du kick (optionnelle)
+    if (params.size() >= 3)
+    {
+        kickReason = params[2];
+        // Si la raison commence par ':', l'enlever
+        if (!kickReason.empty() && kickReason[0] == ':')
+            kickReason = kickReason.substr(1);
+        
+        // Reconstituer la raison complète si il y a des espaces
+        for (size_t i = 3; i < params.size(); i++)
+            kickReason += " " + params[i];
+    }
+
+    std::string nick = client.getNickname();
+
+    // Vérifier que le canal existe
+    Channel* channel = _server->getChannel(channelName);
+    if (!channel)
+    {
+        // ERR_NOSUCHCHANNEL (403)
+        sendResponse(fd, ":ircserv 403 " + nick + " " + channelName + " :No such channel\r\n");
+        return;
+    }
+
+    // Vérifier que l'opérateur est membre du canal
+    if (!channel->isMember(fd))
+    {
+        // ERR_NOTONCHANNEL (442)
+        sendResponse(fd, ":ircserv 442 " + nick + " " + channelName + " :You're not on that channel\r\n");
+        return;
+    }
+
+    // Vérifier que l'opérateur a les privilèges d'opérateur
+    if (!channel->isOperator(fd))
+    {
+        // ERR_CHANOPRIVSNEEDED (482)
+        sendResponse(fd, ":ircserv 482 " + nick + " " + channelName + " :You're not channel operator\r\n");
+        return;
+    }
+
+    // Trouver l'utilisateur cible
+    int targetFd = -1;
+    for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it)
+    {
+        if (it->second.getNickname() == targetNick)
+        {
+            targetFd = it->first;
+            break;
+        }
+    }
+
+    if (targetFd == -1)
+    {
+        // ERR_NOSUCHNICK (401)
+        sendResponse(fd, ":ircserv 401 " + nick + " " + targetNick + " :No such nick/channel\r\n");
+        return;
+    }
+
+    // Vérifier que l'utilisateur cible est dans le canal
+    if (!channel->isMember(targetFd))
+    {
+        // ERR_USERNOTINCHANNEL (441)
+        sendResponse(fd, ":ircserv 441 " + nick + " " + targetNick + " " + channelName + " :They aren't on that channel\r\n");
+        return;
+    }
+
+    // Construire les informations de l'opérateur
+    std::string user = client.getUsername();
+    std::string host = client.getHostname();
+    std::string fullMask = nick + "!" + user + "@" + host;
+
+    // Construire le message KICK
+    std::string kickMsg = ":" + fullMask + " KICK " + channelName + " " + targetNick + " :" + kickReason + "\r\n";
+
+    // Envoyer le message KICK à TOUS les membres du canal (y compris celui qui se fait kick)
+    std::vector<int> members = channel->getAllMembers();
+    for (size_t i = 0; i < members.size(); i++)
+    {
+        sendResponse(members[i], kickMsg);
+    }
+
+    std::cout << "User " << targetNick << " kicked from " << channelName << " by " << nick << " (reason: " << kickReason << ")" << std::endl;
+
+    // Retirer l'utilisateur du canal
+    channel->removeMember(targetFd);
+    
+    // Mettre à jour la liste des canaux du client cible
+    std::map<int, Client>::iterator targetClientIt = clients.find(targetFd);
+    if (targetClientIt != clients.end())
+    {
+        targetClientIt->second.leaveChannel(channelName);
+    }
+
+    // Supprimer le canal s'il devient vide
+    if (channel->isEmpty())
+    {
+        _server->removeChannel(channelName);
     }
 }
 
