@@ -88,6 +88,10 @@ void CommandHandler::executeCommand(int fd, const std::string& command)
     {
         handlePrivmsg(fd, params);
     }
+    else if (cmd == "MODE")
+    {
+        handleMode(fd, params);
+    }
     else if (cmd == "TOPIC")
     {
         handleTopic(fd, params);
@@ -667,6 +671,245 @@ void CommandHandler::handlePrivmsg(int fd, const std::vector<std::string>& param
         sendResponse(targetFd, privmsgToUser);
 
         std::cout << "PRIVMSG from " << nick << " to user " << target << ": " << message << std::endl;
+    }
+}
+
+void CommandHandler::handleMode(int fd, const std::vector<std::string>& params)
+{
+    if (!_server)
+        return;
+
+    std::map<int, Client>& clients = _server->getClients();
+    std::map<int, Client>::iterator clientIt = clients.find(fd);
+    if (clientIt == clients.end())
+        return;
+
+    Client& client = clientIt->second;
+
+    // Vérifier que le client est enregistré
+    if (!client.isRegistered())
+    {
+        sendResponse(fd, ":ircserv 451 * :You have not registered\r\n");
+        return;
+    }
+
+    // Vérifier qu'il y a au moins un paramètre (nom du canal)
+    if (params.empty())
+    {
+        // ERR_NEEDMOREPARAMS (461)
+        sendResponse(fd, ":ircserv 461 " + client.getNickname() + " MODE :Not enough parameters\r\n");
+        return;
+    }
+
+    std::string target = params[0];
+    std::string nick = client.getNickname();
+
+    // Pour l'instant, on ne gère que les modes de canaux (commencent par # ou &)
+    if (target[0] != '#' && target[0] != '&')
+    {
+        // ERR_NOSUCHNICK (401) - pour les utilisateurs, pas implémenté
+        sendResponse(fd, ":ircserv 401 " + nick + " " + target + " :No such nick/channel\r\n");
+        return;
+    }
+
+    // Vérifier que le canal existe
+    Channel* channel = _server->getChannel(target);
+    if (!channel)
+    {
+        // ERR_NOSUCHCHANNEL (403)
+        sendResponse(fd, ":ircserv 403 " + nick + " " + target + " :No such channel\r\n");
+        return;
+    }
+
+    // Vérifier que le client est membre du canal
+    if (!channel->isMember(fd))
+    {
+        // ERR_NOTONCHANNEL (442)
+        sendResponse(fd, ":ircserv 442 " + nick + " " + target + " :You're not on that channel\r\n");
+        return;
+    }
+
+    // Si pas de modes spécifiés, afficher les modes actuels
+    if (params.size() == 1)
+    {
+        std::string modeString = channel->getModeString();
+        // RPL_CHANNELMODEIS (324)
+        sendResponse(fd, ":ircserv 324 " + nick + " " + target + " " + modeString + "\r\n");
+        return;
+    }
+
+    // Vérifier que l'utilisateur est opérateur pour modifier les modes
+    if (!channel->isOperator(fd))
+    {
+        // ERR_CHANOPRIVSNEEDED (482)
+        sendResponse(fd, ":ircserv 482 " + nick + " " + target + " :You're not channel operator\r\n");
+        return;
+    }
+
+    // Parser les modes
+    std::string modestring = params[1];
+    std::vector<std::string> modeParams;
+    
+    // Collecter les paramètres supplémentaires
+    for (size_t i = 2; i < params.size(); i++)
+        modeParams.push_back(params[i]);
+
+    // Variables pour tracker les changements
+    std::string appliedModes = "";
+    bool adding = true;
+    size_t paramIndex = 0;
+
+    for (size_t i = 0; i < modestring.length(); i++)
+    {
+        char c = modestring[i];
+        
+        if (c == '+')
+        {
+            adding = true;
+            continue;
+        }
+        else if (c == '-')
+        {
+            adding = false;
+            continue;
+        }
+
+        // Vérifier que c'est un mode valide
+        if (!isValidModeChar(c))
+        {
+            // ERR_UNKNOWNMODE (472)
+            sendResponse(fd, ":ircserv 472 " + nick + " " + std::string(1, c) + " :is unknown mode char to me\r\n");
+            continue;
+        }
+
+        std::string param = "";
+        
+        // Certains modes nécessitent des paramètres
+        if ((c == 'k' && adding) || (c == 'l' && adding) || c == 'o')
+        {
+            if (paramIndex < modeParams.size())
+            {
+                param = modeParams[paramIndex];
+                paramIndex++;
+            }
+            else
+            {
+                // Paramètre manquant
+                continue;
+            }
+        }
+
+        // Appliquer le mode
+        applyChannelMode(channel, c, adding, param);
+        
+        // Ajouter à la liste des modes appliqués
+        if (appliedModes.empty())
+            appliedModes += (adding ? "+" : "-");
+        else if ((adding && appliedModes[appliedModes.length()-1] == '-') ||
+                 (!adding && appliedModes[appliedModes.length()-1] == '+'))
+            appliedModes += (adding ? "+" : "-");
+        
+        appliedModes += c;
+    }
+
+    // Si des modes ont été appliqués, notifier le canal
+    if (!appliedModes.empty())
+    {
+        std::string user = client.getUsername();
+        std::string host = client.getHostname();
+        std::string fullMask = nick + "!" + user + "@" + host;
+        
+        std::string modeMsg = ":" + fullMask + " MODE " + target + " " + appliedModes;
+        
+        // Ajouter les paramètres si nécessaire
+        if (!modeParams.empty())
+        {
+            for (size_t i = 0; i < modeParams.size() && i < paramIndex; i++)
+                modeMsg += " " + modeParams[i];
+        }
+        modeMsg += "\r\n";
+
+        // Envoyer à tous les membres du canal
+        std::vector<int> members = channel->getAllMembers();
+        for (size_t i = 0; i < members.size(); i++)
+        {
+            sendResponse(members[i], modeMsg);
+        }
+
+        std::cout << "Mode changed in " << target << " by " << nick << ": " << appliedModes << std::endl;
+    }
+}
+
+bool CommandHandler::isValidModeChar(char mode)
+{
+    // Modes supportés : i (invite-only), t (topic restricted), k (key), l (limit), o (operator)
+    return (mode == 'i' || mode == 't' || mode == 'k' || mode == 'l' || mode == 'o');
+}
+
+void CommandHandler::applyChannelMode(Channel* channel, char mode, bool add, const std::string& param)
+{
+    if (!channel || !_server)
+        return;
+
+    std::map<int, Client>& clients = _server->getClients();
+
+    switch (mode)
+    {
+        case 'i': // invite-only
+            channel->setInviteOnly(add);
+            break;
+            
+        case 't': // topic restricted
+            channel->setTopicRestricted(add);
+            break;
+            
+        case 'k': // key (password)
+            if (add && !param.empty())
+            {
+                channel->setPassword(param);
+            }
+            else if (!add)
+            {
+                channel->setPassword("");
+            }
+            break;
+            
+        case 'l': // user limit
+            if (add && !param.empty())
+            {
+                int limit = std::atoi(param.c_str());
+                if (limit > 0)
+                    channel->setUserLimit(limit);
+            }
+            else if (!add)
+            {
+                channel->setUserLimit(0);
+            }
+            break;
+            
+        case 'o': // operator privilege
+            if (!param.empty())
+            {
+                // Trouver l'utilisateur cible
+                int targetFd = -1;
+                for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it)
+                {
+                    if (it->second.getNickname() == param)
+                    {
+                        targetFd = it->first;
+                        break;
+                    }
+                }
+                
+                if (targetFd != -1 && channel->isMember(targetFd))
+                {
+                    if (add)
+                        channel->addOperator(targetFd);
+                    else
+                        channel->removeOperator(targetFd);
+                }
+            }
+            break;
     }
 }
 

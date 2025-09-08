@@ -36,6 +36,11 @@ class CommandHandler
         // PRIVMSG
         void handlePrivmsg(int fd, const std::vector<std::string>& params);
 
+        // MODE
+        void handleMode(int fd, const std::vector<std::string>& params);
+        bool isValidModeChar(char mode);
+        void applyChannelMode(Channel* channel, char mode, bool add, const std::string& param);
+
         // TOPIC
         void handleTopic(int fd, const std::vector<std::string>& params);
 
