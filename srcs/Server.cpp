@@ -63,6 +63,7 @@ void Server::run_serv()
 void Server::newConnection()
 {
     sockaddr_in clientAddr;
+    std::memset(&clientAddr, 0, sizeof(clientAddr));
     socklen_t len = sizeof(clientAddr);
     int clientFd = accept(_serverSocket, (struct sockaddr *) &clientAddr, &len);
     if (clientFd < 0)
@@ -73,6 +74,7 @@ void Server::newConnection()
     pollfd pfd;
     pfd.fd = clientFd;
     pfd.events = POLLIN;
+    pfd.revents = 0;
     _pollfds.push_back(pfd);
     _clients.insert(std::make_pair(clientFd, Client(clientFd)));
 
