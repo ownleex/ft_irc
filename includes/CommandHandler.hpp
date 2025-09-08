@@ -33,6 +33,9 @@ class CommandHandler
         void handleJoin(int fd, const std::vector<std::string>& params);
         void sendNamesList(int fd, const std::string& channelName, Channel* channel);
 
+        // PRIVMSG
+        void handlePrivmsg(int fd, const std::vector<std::string>& params);
+
         // TOPIC
         void handleTopic(int fd, const std::vector<std::string>& params);
 
