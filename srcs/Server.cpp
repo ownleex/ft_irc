@@ -13,6 +13,7 @@ Server::Server(int port, const std::string &password) : _port(port), _password(p
 {
 	std::cout << "Server open on port " << _port << std::endl;
     _commandHandler = new CommandHandler(this);
+
     // Installe le gestionnaire de signal (Ctrl+C)
     struct sigaction sa;
     std::memset(&sa, 0, sizeof(sa));
@@ -21,6 +22,7 @@ Server::Server(int port, const std::string &password) : _port(port), _password(p
     sa.sa_flags = 0; // assure que les syscalls comme poll retournent EINTR
     sigaction(SIGINT, &sa, NULL);
     _stop = 0;
+
     initSocket();
 }
 
@@ -67,6 +69,7 @@ void Server::run_serv()
         {
             if (errno == EINTR && _stop)
                 break; // interrompu par SIGINT, on arrete
+                
             throw std::runtime_error("poll failed");
         }
         for (size_t i = 0; i < _pollfds.size(); i++)
