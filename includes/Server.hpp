@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <poll.h>
+#include <csignal>
 #include "Client.hpp"
 #include "Channel.hpp"
 #include "CommandHandler.hpp"
@@ -28,6 +29,10 @@ class Server
         std::map<int, Client> _clients;
         CommandHandler* _commandHandler;
         std::map<std::string, Channel> _channels;
+        
+        // SIGINT handling
+        static volatile sig_atomic_t _stop;
+        static void handleSignal(int signum);
 
         void initSocket();
         void newConnection();

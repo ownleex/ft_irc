@@ -1,9 +1,26 @@
 #include <Server.hpp>
+#include <cerrno>
+
+volatile sig_atomic_t Server::_stop = 0;
+
+void Server::handleSignal(int signum)
+{
+    if (signum == SIGINT)
+        _stop = 1;
+}
 
 Server::Server(int port, const std::string &password) : _port(port), _password(password)
 {
 	std::cout << "Server open on port " << _port << std::endl;
     _commandHandler = new CommandHandler(this);
+    // Installe le gestionnaire de signal (Ctrl+C)
+    struct sigaction sa;
+    std::memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = &Server::handleSignal;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0; // assure que les syscalls comme poll retournent EINTR
+    sigaction(SIGINT, &sa, NULL);
+    _stop = 0;
     initSocket();
 }
 
@@ -44,10 +61,14 @@ void Server::initSocket()
 
 void Server::run_serv()
 {
-    while (true)
+    while (!_stop)
     {
         if (poll(_pollfds.data(), _pollfds.size(), -1) < 0)
+        {
+            if (errno == EINTR && _stop)
+                break; // interrompu par SIGINT, on arrete
             throw std::runtime_error("poll failed");
+        }
         for (size_t i = 0; i < _pollfds.size(); i++)
         {
             if (_pollfds[i].revents & POLLIN)
@@ -59,7 +80,9 @@ void Server::run_serv()
             }
         }
     }
+    std::cout << "\nSIGINT received, shutting down..." << std::endl;
 }
+
 void Server::newConnection()
 {
     sockaddr_in clientAddr;
@@ -68,6 +91,8 @@ void Server::newConnection()
     int clientFd = accept(_serverSocket, (struct sockaddr *) &clientAddr, &len);
     if (clientFd < 0)
     {
+        if (errno == EINTR && _stop)
+            return; // interrompu par SIGINT, on arrete
         std::cerr << "newConnection failed" << std::endl;
         return;
     }
@@ -85,7 +110,12 @@ void Server::clientData(int fd)
 {
     char buffer[512];
     ssize_t bytes = recv(fd, buffer, sizeof(buffer) - 1, 0); // -1 si on veux traiter le \0
-    if (bytes <= 0)
+    if (bytes < 0)
+    {
+        if (errno == EINTR)
+            return; // interrompu par SIGINT, on arrete
+    }
+    if (bytes == 0)
     {
         std::cout << "Client disconnected from FD=" << fd << std::endl;
         removeClient(fd);
