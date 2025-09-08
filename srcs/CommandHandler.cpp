@@ -100,6 +100,10 @@ void CommandHandler::executeCommand(int fd, const std::string& command)
     {
         handleTopic(fd, params);
     }
+    else if (cmd == "INVITE")
+    {
+        handleInvite(fd, params);
+    }
     else if (cmd == "PART")
     {
         handlePart(fd, params);
@@ -1149,6 +1153,109 @@ void CommandHandler::handleTopic(int fd, const std::vector<std::string>& params)
     }
 
     std::cout << "Topic changed in " << channelName << " by " << nick << ": " << newTopic << std::endl;
+}
+
+void CommandHandler::handleInvite(int fd, const std::vector<std::string>& params)
+{
+    if (!_server)
+        return;
+
+    std::map<int, Client>& clients = _server->getClients();
+    std::map<int, Client>::iterator clientIt = clients.find(fd);
+    if (clientIt == clients.end())
+        return;
+
+    Client& client = clientIt->second;
+
+    // Vérifier que le client est enregistré
+    if (!client.isRegistered())
+    {
+        sendResponse(fd, ":ircserv 451 * :You have not registered\r\n");
+        return;
+    }
+
+    // Vérifier qu'il y a au moins 2 paramètres (nickname et canal)
+    if (params.size() < 2)
+    {
+        // ERR_NEEDMOREPARAMS (461)
+        sendResponse(fd, ":ircserv 461 " + client.getNickname() + " INVITE :Not enough parameters\r\n");
+        return;
+    }
+
+    std::string targetNick = params[0];
+    std::string channelName = params[1];
+    std::string nick = client.getNickname();
+
+    // Vérifier que le canal existe
+    Channel* channel = _server->getChannel(channelName);
+    if (!channel)
+    {
+        // ERR_NOSUCHCHANNEL (403)
+        sendResponse(fd, ":ircserv 403 " + nick + " " + channelName + " :No such channel\r\n");
+        return;
+    }
+
+    // Vérifier que l'inviteur est membre du canal
+    if (!channel->isMember(fd))
+    {
+        // ERR_NOTONCHANNEL (442)
+        sendResponse(fd, ":ircserv 442 " + nick + " " + channelName + " :You're not on that channel\r\n");
+        return;
+    }
+
+    // Vérifier que l'inviteur est opérateur du canal (nécessaire pour inviter)
+    if (!channel->isOperator(fd))
+    {
+        // ERR_CHANOPRIVSNEEDED (482)
+        sendResponse(fd, ":ircserv 482 " + nick + " " + channelName + " :You're not channel operator\r\n");
+        return;
+    }
+
+    // Trouver l'utilisateur cible
+    int targetFd = -1;
+    Client* targetClient = NULL;
+    
+    for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it)
+    {
+        if (it->second.getNickname() == targetNick)
+        {
+            targetFd = it->first;
+            targetClient = &(it->second);
+            break;
+        }
+    }
+
+    if (targetFd == -1 || !targetClient)
+    {
+        // ERR_NOSUCHNICK (401)
+        sendResponse(fd, ":ircserv 401 " + nick + " " + targetNick + " :No such nick/channel\r\n");
+        return;
+    }
+
+    // Vérifier que l'utilisateur cible n'est pas déjà dans le canal
+    if (channel->isMember(targetFd))
+    {
+        // ERR_USERONCHANNEL (443)
+        sendResponse(fd, ":ircserv 443 " + nick + " " + targetNick + " " + channelName + " :is already on channel\r\n");
+        return;
+    }
+
+    // Ajouter l'utilisateur à la liste des invités
+    channel->addInvited(targetFd);
+
+    std::string user = client.getUsername();
+    std::string host = client.getHostname();
+    std::string fullMask = nick + "!" + user + "@" + host;
+
+    // Envoyer la confirmation à l'inviteur
+    // RPL_INVITING (341)
+    sendResponse(fd, ":ircserv 341 " + nick + " " + targetNick + " " + channelName + "\r\n");
+
+    // Envoyer l'invitation à l'utilisateur cible
+    std::string inviteMsg = ":" + fullMask + " INVITE " + targetNick + " " + channelName + "\r\n";
+    sendResponse(targetFd, inviteMsg);
+
+    std::cout << "User " << targetNick << " invited to " << channelName << " by " << nick << std::endl;
 }
 
 void CommandHandler::handlePart(int fd, const std::vector<std::string>& params)

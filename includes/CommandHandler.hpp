@@ -47,6 +47,9 @@ class CommandHandler
         // TOPIC
         void handleTopic(int fd, const std::vector<std::string>& params);
 
+        // INVITE
+        void handleInvite(int fd, const std::vector<std::string>& params);
+
         // PART
         void handlePart(int fd, const std::vector<std::string>& params);
 
