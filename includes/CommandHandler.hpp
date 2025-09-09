@@ -21,6 +21,9 @@ class CommandHandler
         // PASS
         void handlePass(int fd, const std::vector<std::string>& params);
 
+        // HELP
+        void handleHelp(int fd);
+
         // NICK
         void handleNick(int fd, const std::vector<std::string>& params);
         bool isValidNickname(const std::string& nick);

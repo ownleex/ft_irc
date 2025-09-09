@@ -72,6 +72,10 @@ void CommandHandler::executeCommand(int fd, const std::string& command)
     {
         handlePass(fd, params);
     }
+    else if (cmd == "HELP")
+    {
+        handleHelp(fd);
+    }
     else if (cmd == "NICK")
     {
         handleNick(fd, params);
@@ -191,6 +195,20 @@ std::vector<std::string> CommandHandler::split(const std::string& str, char deli
     if (!token.empty())
         tokens.push_back(token);
     return tokens;
+}
+
+void CommandHandler::handleHelp(int fd)
+{
+    if (!_server)
+        return;
+
+    std::string welcomeMsg =
+    "Pour vous enregistrer, tapez les commandes suivantes :\r\n"
+    "  PASS <password>\r\n"
+    "  NICK <votre_pseudo>\r\n"
+    "  USER <username> 0 * :<realname>\r\n"
+    "Exemple : PASS secret | NICK John | USER john 0 * :John Doe\r\n";
+    send(fd, welcomeMsg.c_str(), welcomeMsg.size(), 0);
 }
 
 void CommandHandler::handleNick(int fd, const std::vector<std::string>& params)
