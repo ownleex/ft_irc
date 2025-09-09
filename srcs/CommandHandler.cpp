@@ -248,7 +248,7 @@ void CommandHandler::handleNick(int fd, const std::vector<std::string>& params)
         std::string fullMask = oldNick + "!" + username + "@" + hostname;
         std::string nickMsg = ":" + fullMask + " NICK " + newNick + "\r\n";
         
-        // NOUVEAU: Collecter tous les clients qui doivent être notifiés
+        // Collecter tous les clients qui doivent être notifiés
         std::set<int> clientsToNotify;
         
         // Ajouter le client lui-même
