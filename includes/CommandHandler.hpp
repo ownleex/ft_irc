@@ -18,11 +18,11 @@ class CommandHandler
         std::vector<std::string> split(const std::string& str, char delimiter);
         void sendResponse(int fd, const std::string& message);
 
-        // PASS
-        void handlePass(int fd, const std::vector<std::string>& params);
-
         // HELP
         void handleHelp(int fd);
+
+        // PASS
+        void handlePass(int fd, const std::vector<std::string>& params);
 
         // NICK
         void handleNick(int fd, const std::vector<std::string>& params);
@@ -35,9 +35,6 @@ class CommandHandler
         // JOIN
         void handleJoin(int fd, const std::vector<std::string>& params);
         void sendNamesList(int fd, const std::string& channelName, Channel* channel);
-
-        // PRIVMSG
-        void handlePrivmsg(int fd, const std::vector<std::string>& params);
 
         // MODE
         void handleMode(int fd, const std::vector<std::string>& params);
@@ -55,6 +52,9 @@ class CommandHandler
 
         // PART
         void handlePart(int fd, const std::vector<std::string>& params);
+
+        // PRIVMSG
+        void handlePrivmsg(int fd, const std::vector<std::string>& params);
 
         // QUIT
         void handleQuit(int fd, const std::vector<std::string>& params);

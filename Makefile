@@ -22,8 +22,12 @@ OBJDIR = obj/
 SRC =		main.cpp \
 			Client.cpp \
 			Server.cpp \
-			CommandHandler.cpp \
-			Channel.cpp
+			Channel.cpp \
+			CommandHandler_Core.cpp \
+			CommandHandler_Channel.cpp \
+			CommandHandler_Auth.cpp \
+			CommandHandler_Messages.cpp \
+			CommandHandler_Utils.cpp
 
 # Headers
 HEADERS =	Client.hpp \
@@ -51,7 +55,7 @@ GREEN		= \e[0;1;32m
 _GREEN		= \e[1;4;32m
 
 FILE_COUNT	= 0
-FILE_TOTAL	= 5
+FILE_TOTAL	= 9
 BAR_SIZE	= ${shell expr 100 \* ${FILE_COUNT} / ${FILE_TOTAL}}
 BAR_LOAD	= ${shell expr 23 \* ${FILE_COUNT} / ${FILE_TOTAL}}
 BAR_REST	= ${shell expr 23 - ${BAR_LOAD}}
