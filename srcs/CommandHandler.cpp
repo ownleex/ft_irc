@@ -243,11 +243,44 @@ void CommandHandler::handleNick(int fd, const std::vector<std::string>& params)
     if (!oldNick.empty())
     {
         // Si le client avait déjà un nickname, notifier le changement
-        std::string nickMsg = ":" + oldNick + " NICK " + newNick + "\r\n";
-        sendResponse(fd, nickMsg);
-        std::cout << "Client FD=" << fd << " changed nickname from " << oldNick << " to " << newNick << std::endl;
+        std::string username = client.getUsername();
+        std::string hostname = client.getHostname();
+        std::string fullMask = oldNick + "!" + username + "@" + hostname;
+        std::string nickMsg = ":" + fullMask + " NICK " + newNick + "\r\n";
         
-        // TODO: Plus tard, notifier tous les canaux où le client est présent
+        // NOUVEAU: Collecter tous les clients qui doivent être notifiés
+        std::set<int> clientsToNotify;
+        
+        // Ajouter le client lui-même
+        clientsToNotify.insert(fd);
+        
+        // Parcourir tous les canaux où le client est présent
+        const std::set<std::string>& clientChannels = client.getChannels();
+        for (std::set<std::string>::const_iterator channelIt = clientChannels.begin(); 
+             channelIt != clientChannels.end(); ++channelIt)
+        {
+            const std::string& channelName = *channelIt;
+            Channel* channel = _server->getChannel(channelName);
+            
+            if (channel)
+            {
+                // Ajouter tous les membres de ce canal à la liste des clients à notifier
+                std::vector<int> members = channel->getAllMembers();
+                for (size_t i = 0; i < members.size(); i++)
+                {
+                    clientsToNotify.insert(members[i]);
+                }
+            }
+        }
+        
+        // Envoyer la notification NICK à tous les clients concernés
+        for (std::set<int>::iterator it = clientsToNotify.begin(); it != clientsToNotify.end(); ++it)
+        {
+            sendResponse(*it, nickMsg);
+        }
+        
+        std::cout << "Client FD=" << fd << " changed nickname from " << oldNick << " to " << newNick << std::endl;
+        std::cout << "Notified " << clientsToNotify.size() << " clients of nickname change" << std::endl;
     }
     else
     {
@@ -472,6 +505,9 @@ void CommandHandler::handleJoin(int fd, const std::vector<std::string>& params)
         // Ajouter le client au canal
         if (channel->addMember(fd))
         {
+            // 🎯 LIGNE CRUCIALE AJOUTÉE :
+            client.joinChannel(channelName);
+            
             // Supprimer l'invitation si elle existait
             channel->removeInvited(fd);
 
@@ -1350,6 +1386,8 @@ void CommandHandler::handlePart(int fd, const std::vector<std::string>& params)
 
         // Retirer le client du canal
         channel->removeMember(fd);
+        
+        // 🎯 LIGNE CRUCIALE AJOUTÉE :
         client.leaveChannel(channelName);
 
         // Supprimer le canal s'il devient vide
