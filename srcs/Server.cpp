@@ -107,6 +107,10 @@ void Server::newConnection()
     _clients.insert(std::make_pair(clientFd, Client(clientFd)));
 
     std::cout << "new connection from FD=" << clientFd << std::endl;
+    std::string notice = ":ircserv NOTICE * :WELCOME to ft_irc !\n"
+                         "Please identify yourself with PASS/NICK/USER.\n"
+                         "You can get help with HELP. \r\n";
+    send(clientFd,notice.c_str(), notice.size(), 0);
 }
 
 void Server::clientData(int fd)
