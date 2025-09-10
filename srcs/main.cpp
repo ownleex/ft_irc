@@ -104,6 +104,24 @@ int main(int argc, char** argv) {
 
 ## Commandes
 
+# PASS
+PASS [password]
+
+# NICK
+NICK new_nickname
+
+# USER
+USER new_nickname 0 * :Real Name
+
+# JOIN
+JOIN #channel [password]
+
+# QUIT
+QUIT :Goodbye!
+
+# PART
+PART #channel [reason]
+
 # KICK
 KICK user #channel [reason]
 
