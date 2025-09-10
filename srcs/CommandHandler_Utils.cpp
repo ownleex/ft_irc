@@ -39,6 +39,18 @@ void CommandHandler::handleHelp(int fd, const std::vector<std::string>& params)
 {
     if (!_server)
         return;
+
+    if (params.empty())
+    {
+        std::string welcomeMsg =
+        "Usage: HELPIRC <command>\r\n"
+        "Commandes disponibles :\r\n"
+        "  PASS, NICK, USER, KICK, INVITE, TOPIC, MODE, JOIN, PART, PRIVMSG, QUIT\r\n"
+        "Exemple: HELPIRC JOIN\r\n";
+        send(fd, welcomeMsg.c_str(), welcomeMsg.size(), 0);
+        return;
+    }
+
     std::string data = params[0];
     for (size_t i = 0; i < data.length(); i++)
         data[i] = std::toupper(data[i]);
