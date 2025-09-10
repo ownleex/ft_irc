@@ -70,9 +70,9 @@ void CommandHandler::executeCommand(int fd, const std::string& command)
     {
         handlePass(fd, params);
     }
-    else if (cmd == "HELP")
+    else if (cmd == "HELPIRC")
     {
-        handleHelp(fd);
+        handleHelp(fd, params);
     }
     else if (cmd == "NICK")
     {
