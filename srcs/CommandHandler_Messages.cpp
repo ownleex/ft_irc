@@ -154,7 +154,7 @@ void CommandHandler::handleQuit(int fd, const std::vector<std::string>& params)
     {
         quitMessage = params[0];
         // Si le message commence par ':', l'enlever
-        if (quitMessage[0] == ':')
+        if (!quitMessage.empty() && quitMessage[0] == ':')
             quitMessage = quitMessage.substr(1);
         
         // Reconstituer le message complet si il y a des espaces
@@ -162,89 +162,9 @@ void CommandHandler::handleQuit(int fd, const std::vector<std::string>& params)
             quitMessage += " " + params[i];
     }
 
-    std::string nickname = client.getNickname();
-    std::string username = client.getUsername();
-    std::string hostname = client.getHostname();
+    std::cout << "Client FD=" << fd << " (" << client.getNickname() 
+              << ") requested quit: " << quitMessage << std::endl;
 
-    // Construire le prefix complet (nick!user@host)
-    std::string prefix;
-    if (!nickname.empty())
-    {
-        prefix = nickname;
-        if (!username.empty())
-            prefix += "!" + username;
-        if (!hostname.empty())
-            prefix += "@" + hostname;
-    }
-    else
-    {
-        prefix = "*"; // Fallback si pas de nickname
-    }
-
-    std::cout << "Client FD=" << fd << " (" << (nickname.empty() ? "unknown" : nickname) 
-              << ") disconnecting: " << quitMessage << std::endl;
-
-    // Notifier tous les canaux où le client était présent
-    if (client.isRegistered() && !nickname.empty())
-    {
-        std::string quitNotification = ":" + prefix + " QUIT :Quit: " + quitMessage + "\r\n";
-        
-        // Obtenir la liste des canaux du client
-        const std::set<std::string>& clientChannels = client.getChannels();
-        std::set<int> notifiedClients; // Pour éviter de notifier plusieurs fois le même client
-        
-        for (std::set<std::string>::const_iterator channelIt = clientChannels.begin(); 
-             channelIt != clientChannels.end(); ++channelIt)
-        {
-            const std::string& channelName = *channelIt;
-            Channel* channel = _server->getChannel(channelName);
-            
-            if (channel)
-            {
-                std::cout << "Notifying channel " << channelName << " of " << nickname << "'s quit" << std::endl;
-                
-                // Obtenir tous les membres du canal
-                std::vector<int> members = channel->getAllMembers();
-                
-                for (size_t i = 0; i < members.size(); i++)
-                {
-                    int memberFd = members[i];
-                    
-                    // Ne pas notifier le client qui quitte, et éviter les doublons
-                    if (memberFd != fd && notifiedClients.find(memberFd) == notifiedClients.end())
-                    {
-                        sendResponse(memberFd, quitNotification);
-                        notifiedClients.insert(memberFd);
-                    }
-                }
-                
-                // Retirer le client du canal
-                channel->removeMember(fd);
-                
-                // Supprimer le canal s'il devient vide
-                if (channel->isEmpty())
-                {
-                    _server->removeChannel(channelName);
-                }
-            }
-        }
-        
-        // Nettoyer la liste des canaux du client
-        // (Ceci sera fait automatiquement quand le client sera supprimé)
-    }
-
-    // Envoyer la confirmation de QUIT au client lui-même
-    if (client.isRegistered())
-    {
-        std::string quitResponse = ":" + prefix + " QUIT :Quit: " + quitMessage + "\r\n";
-        send(fd, quitResponse.c_str(), quitResponse.length(), 0);
-    }
-
-    // Fermer la connexion
-    close(fd);
-    _server->removeClient(fd);
-    
-    // Note: Le client sera automatiquement retiré de _pollfds et _clients 
-    // par Server::removeClient() qui sera appelé dans la boucle principale
-    // quand recv() retournera 0 ou quand on détecte que la connexion est fermée
+    // Laisser removeClient gérer tout le nettoyage
+    _server->removeClient(fd, quitMessage, true); // true = voluntary quit
 }

@@ -143,7 +143,7 @@ void Server::clientData(int fd)
     }
 }
 
-void Server::removeClient(int fd)
+void Server::removeClient(int fd, const std::string& quitReason, bool voluntary)
 {
     // Vérifier que le client existe
     std::map<int, Client>::iterator clientIt = _clients.find(fd);
@@ -152,12 +152,23 @@ void Server::removeClient(int fd)
     
     Client& client = clientIt->second;
     
-    // 🔥 CRITIQUE : Notifier tous les canaux du QUIT
+    // Construire le message de quit approprié
+    std::string actualQuitReason = quitReason.empty() ? "Connection lost" : quitReason;
+    std::string quitPrefix = voluntary ? "Quit: " : "";
+    
+    // Notifier tous les canaux du QUIT seulement si le client était enregistré
     if (client.isRegistered() && !client.getNickname().empty())
     {
-        std::string quitMsg = ":" + client.getNickname() + "!" + 
-                             client.getUsername() + "@" + client.getHostname() + 
-                             " QUIT :Connection lost\r\n";
+        std::string fullMask = client.getNickname() + "!" + 
+                              client.getUsername() + "@" + client.getHostname();
+        
+        std::string quitNotification = ":" + fullMask + " QUIT :" + quitPrefix + actualQuitReason + "\r\n";
+        
+        // Si c'est un quit volontaire, envoyer d'abord au client lui-même
+        if (voluntary)
+        {
+            send(fd, quitNotification.c_str(), quitNotification.length(), MSG_NOSIGNAL);
+        }
         
         // Obtenir tous les clients à notifier
         std::set<int> clientsToNotify;
@@ -171,7 +182,7 @@ void Server::removeClient(int fd)
                 std::vector<int> members = channel->getAllMembers();
                 for (size_t i = 0; i < members.size(); i++)
                 {
-                    if (members[i] != fd)
+                    if (members[i] != fd) // Ne pas notifier le client qui part
                         clientsToNotify.insert(members[i]);
                 }
                 
@@ -187,8 +198,11 @@ void Server::removeClient(int fd)
         // Notifier tous les clients concernés
         for (std::set<int>::iterator it = clientsToNotify.begin(); it != clientsToNotify.end(); ++it)
         {
-            send(*it, quitMsg.c_str(), quitMsg.length(), MSG_NOSIGNAL);
+            send(*it, quitNotification.c_str(), quitNotification.length(), MSG_NOSIGNAL);
         }
+        
+        std::cout << "Notified " << clientsToNotify.size() << " clients of " 
+                  << client.getNickname() << "'s departure" << std::endl;
     }
     
     // Fermer le socket
@@ -207,7 +221,8 @@ void Server::removeClient(int fd)
         }
     }
     
-    std::cout << "Client FD=" << fd << " removed and cleaned up" << std::endl;
+    std::cout << "Client FD=" << fd << " removed and cleaned up (" 
+              << (voluntary ? "voluntary" : "forced") << ")" << std::endl;
 }
 
 Channel* Server::getChannel(const std::string& name)
