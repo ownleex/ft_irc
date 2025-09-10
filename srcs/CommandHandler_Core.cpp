@@ -38,11 +38,22 @@ void CommandHandler::processClientBuffer(int fd)
         {
             std::cout << "Processing command from FD=" << fd << ": " << command << std::endl;
             executeCommand(fd, command);
+            
+            // Si le client a été supprimé, arrêter immédiatement
+            if (clients.find(fd) == clients.end())
+            {
+                std::cout << "Client FD=" << fd << " was removed during command execution, stopping processing" << std::endl;
+                return;
+            }
         }
     }
     
-    // Remettre à jour le buffer du client
-    it->second.setBuffer(buffer);
+    // S'assurer que le client existe encore avant de mettre à jour le buffer
+    it = clients.find(fd);
+    if (it != clients.end())
+    {
+        it->second.setBuffer(buffer);
+    }
 }
 
 void CommandHandler::executeCommand(int fd, const std::string& command)
