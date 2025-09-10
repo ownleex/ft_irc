@@ -50,3 +50,83 @@ int main(int argc, char** argv) {
     
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+## connection complete commandes partielles
+
+{
+    printf "PASS "
+    sleep 0.2
+    printf "123\r\n"
+    sleep 0.2
+    printf "NI"
+    sleep 0.2
+    printf "CK "
+    sleep 0.2
+    printf "testuser\r\n"
+    sleep 0.2
+    printf "USER testuser 0 * :Test User\r\n"
+    sleep 0.2
+    cat
+} | nc localhost 6666
+
+
+## commande partielle
+
+{
+    printf "PA"
+    cat
+} | nc localhost 6666
+
+## Commandes
+
+# KICK
+KICK user #channel [reason]
+
+# INVITE
+INVITE user #channel
+
+# TOPIC
+TOPIC #channel [new topic]
+
+# MODE
+    -i : MODE +i #channel (invite-only)
+         MODE -i #channel (remove invite-only)
+
+    -t : MODE +t #channel (topic restricted)
+         MODE -t #channel (remove topic restricted)
+
+    -k : MODE +k #channel key (set password)
+         MODE -k #channel (remove password)
+
+    -o : MODE +o user #channel (make user operator)
+         MODE -o user #channel (remove operator status)
+
+    -l : MODE +l limit #channel (set user limit)
+         MODE -l #channel (remove user limit)
+
+*/
