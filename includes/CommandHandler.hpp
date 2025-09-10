@@ -19,7 +19,7 @@ class CommandHandler
         void sendResponse(int fd, const std::string& message);
 
         // HELP
-        void handleHelp(int fd);
+        void handleHelp(int fd, const std::vector<std::string>& params);
 
         // PASS
         void handlePass(int fd, const std::vector<std::string>& params);
