@@ -114,19 +114,19 @@ INVITE user #channel
 TOPIC #channel [new topic]
 
 # MODE
-    -i : MODE +i #channel (invite-only)
-         MODE -i #channel (remove invite-only)
+    -i : MODE #channel +i (invite-only)
+         MODE #channel -i (remove invite-only)
 
-    -t : MODE +t #channel (topic restricted)
-         MODE -t #channel (remove topic restricted)
+    -t : MODE #channel +t (topic restricted)
+         MODE #channel -t (remove topic restricted)
 
-    -k : MODE +k #channel key (set password)
-         MODE -k #channel (remove password)
+    -k : MODE #channel +k key (set password)
+         MODE #channel -k (remove password)
 
-    -o : MODE +o user #channel (make user operator)
-         MODE -o user #channel (remove operator status)
+    -o : MODE #channel +o user (make user operator)
+         MODE #channel -o user (remove operator status)
 
-    -l : MODE +l limit #channel (set user limit)
-         MODE -l #channel (remove user limit)
+    -l : MODE #channel +l limit (set user limit)
+         MODE #channel -l (remove user limit)
 
 */
