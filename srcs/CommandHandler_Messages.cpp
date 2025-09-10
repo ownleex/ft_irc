@@ -134,8 +134,6 @@ void CommandHandler::handlePrivmsg(int fd, const std::vector<std::string>& param
     }
 }
 
-
-
 void CommandHandler::handleQuit(int fd, const std::vector<std::string>& params)
 {
     if (!_server)
