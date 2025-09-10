@@ -184,7 +184,7 @@ void CommandHandler::handleQuit(int fd, const std::vector<std::string>& params)
     std::cout << "Client FD=" << fd << " (" << (nickname.empty() ? "unknown" : nickname) 
               << ") disconnecting: " << quitMessage << std::endl;
 
-    // 📢 NOUVEAU : Notifier tous les canaux où le client était présent
+    // Notifier tous les canaux où le client était présent
     if (client.isRegistered() && !nickname.empty())
     {
         std::string quitNotification = ":" + prefix + " QUIT :Quit: " + quitMessage + "\r\n";
@@ -242,6 +242,7 @@ void CommandHandler::handleQuit(int fd, const std::vector<std::string>& params)
 
     // Fermer la connexion
     close(fd);
+    _server->removeClient(fd);
     
     // Note: Le client sera automatiquement retiré de _pollfds et _clients 
     // par Server::removeClient() qui sera appelé dans la boucle principale

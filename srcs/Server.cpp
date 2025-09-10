@@ -145,8 +145,59 @@ void Server::clientData(int fd)
 
 void Server::removeClient(int fd)
 {
+    // Vérifier que le client existe
+    std::map<int, Client>::iterator clientIt = _clients.find(fd);
+    if (clientIt == _clients.end())
+        return; // Client déjà supprimé
+    
+    Client& client = clientIt->second;
+    
+    // 🔥 CRITIQUE : Notifier tous les canaux du QUIT
+    if (client.isRegistered() && !client.getNickname().empty())
+    {
+        std::string quitMsg = ":" + client.getNickname() + "!" + 
+                             client.getUsername() + "@" + client.getHostname() + 
+                             " QUIT :Connection lost\r\n";
+        
+        // Obtenir tous les clients à notifier
+        std::set<int> clientsToNotify;
+        const std::set<std::string>& channels = client.getChannels();
+        
+        for (std::set<std::string>::const_iterator it = channels.begin(); it != channels.end(); ++it)
+        {
+            Channel* channel = getChannel(*it);
+            if (channel)
+            {
+                std::vector<int> members = channel->getAllMembers();
+                for (size_t i = 0; i < members.size(); i++)
+                {
+                    if (members[i] != fd)
+                        clientsToNotify.insert(members[i]);
+                }
+                
+                // Retirer le client du canal
+                channel->removeMember(fd);
+                
+                // Supprimer le canal s'il devient vide
+                if (channel->isEmpty())
+                    removeChannel(*it);
+            }
+        }
+        
+        // Notifier tous les clients concernés
+        for (std::set<int>::iterator it = clientsToNotify.begin(); it != clientsToNotify.end(); ++it)
+        {
+            send(*it, quitMsg.c_str(), quitMsg.length(), MSG_NOSIGNAL);
+        }
+    }
+    
+    // Fermer le socket
     close(fd);
+    
+    // Supprimer de la liste des clients
     _clients.erase(fd);
+    
+    // Supprimer de poll
     for (size_t i = 0; i < _pollfds.size(); i++)
     {
         if (_pollfds[i].fd == fd)
@@ -155,6 +206,8 @@ void Server::removeClient(int fd)
             break;
         }
     }
+    
+    std::cout << "Client FD=" << fd << " removed and cleaned up" << std::endl;
 }
 
 Channel* Server::getChannel(const std::string& name)

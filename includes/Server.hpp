@@ -37,7 +37,6 @@ class Server
         void initSocket();
         void newConnection();
         void clientData(int fd);
-        void removeClient(int fd);
 
     public:
         Server(int port, const std::string &password);
@@ -52,4 +51,5 @@ class Server
         Channel* getChannel(const std::string& name);
         Channel& createChannel(const std::string& name);
         void removeChannel(const std::string& name);
+        void removeClient(int fd);
 };

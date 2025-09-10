@@ -1,0 +1,26 @@
+// connection complete commandes partielles
+
+{
+    printf "PASS "
+    sleep 0.2
+    printf "123\r\n"
+    sleep 0.2
+    printf "NI"
+    sleep 0.2
+    printf "CK "
+    sleep 0.2
+    printf "testuser\r\n"
+    sleep 0.2
+    printf "USER testuser 0 * :Test User\r\n"
+    sleep 0.2
+    cat
+} | nc localhost 6666
+
+
+// commande partielle
+
+{
+    printf "PA"
+    cat
+} | nc localhost 6666
+
