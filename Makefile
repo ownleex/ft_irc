@@ -12,6 +12,7 @@
 
 # Program Executable
 EXE = ircsrv
+BOTEXE = channelbot
 
 # Directories
 SRCDIR = srcs/
@@ -29,6 +30,8 @@ SRC =		main.cpp \
 			CommandHandler_Messages.cpp \
 			CommandHandler_Utils.cpp
 
+BOT_SRC = 	srcs/Bot.cpp
+
 # Headers
 HEADERS =	Client.hpp \
 			Server.hpp \
@@ -38,6 +41,8 @@ HEADERS =	Client.hpp \
 SOURCES =		$(addprefix $(SRCDIR), $(SRC))
 OBJECTS =		$(patsubst $(SRCDIR)%.cpp, $(OBJDIR)%.o, $(SOURCES))
 DEPENDS =		$(OBJECTS:.o=.d)
+
+BOT_OBJECTS = $(patsubst $(SRCDIR)%.cpp, $(OBJDIR)%.o, $(BOT_SRC))
 
 # Variables
 CC		= c++
@@ -55,17 +60,21 @@ GREEN		= \e[0;1;32m
 _GREEN		= \e[1;4;32m
 
 FILE_COUNT	= 0
-FILE_TOTAL	= 9
+FILE_TOTAL	= 10
 BAR_SIZE	= ${shell expr 100 \* ${FILE_COUNT} / ${FILE_TOTAL}}
 BAR_LOAD	= ${shell expr 23 \* ${FILE_COUNT} / ${FILE_TOTAL}}
 BAR_REST	= ${shell expr 23 - ${BAR_LOAD}}
 
 # Makefile
-all:		${EXE}
+all:		${EXE} ${BOTEXE}
 
 ${EXE}:		${OBJECTS}
 		@${CC} ${CFLAGS} ${OBJECTS} -o ${EXE}
 		@echo "\n\n${GREEN}[✓] - ${_GREEN}ft_irc${GREEN} Successfully Compiled!${RESET}"
+
+${BOTEXE}: ${BOT_OBJECTS}
+		@${CC} ${CFLAGS} ${BOT_OBJECTS} -o ${BOTEXE}
+		@echo "\n\n${GREEN}[✓] - ${_GREEN}ft_irc${GREEN} BOT Successfully Compiled!${RESET}"
 
 ${OBJDIR}:
 		@mkdir -p ${OBJDIR}
@@ -83,7 +92,7 @@ clean:
 		@echo "${WHITE}[!] - ${_WHITE}ft_irc${WHITE} Successfully Cleaned!${RESET}"
 
 fclean: 	clean
-		@${RM} ${EXE}
+		@${RM} ${EXE} ${BOTEXE}
 
 re:			fclean all
 
