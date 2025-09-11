@@ -45,10 +45,9 @@ int main(int ac, char **av)
     }
     int sock = socket(AF_INET, SOCK_STREAM, 0);
 
-    int i = std::atoi(av[1]);
     sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(i);
+    serv_addr.sin_port = htons(port);
     inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
 
     if (connect(sock, (struct sockaddr *)& serv_addr, sizeof(serv_addr)) < 0)
@@ -57,7 +56,7 @@ int main(int ac, char **av)
         return 1;
     }
 
-    std::string pass = std::string("PASS ") + av[2] + "\r\n";
+    std::string pass = std::string("PASS ") + password + "\r\n";
     std::string nick = "NICK bot\r\n";
     std::string user = "USER channelbot 0 * :Channel Bot\r\n";
     send(sock, pass.c_str(), pass.size(), 0);
