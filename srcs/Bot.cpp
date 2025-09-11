@@ -43,6 +43,7 @@ int main(int ac, char **av)
         std::cerr << "\nERROR: password cannot be empty\n\n";
         return 1;
     }
+    
     int sock = socket(AF_INET, SOCK_STREAM, 0);
 
     sockaddr_in serv_addr;
@@ -62,6 +63,7 @@ int main(int ac, char **av)
     send(sock, pass.c_str(), pass.size(), 0);
     send(sock, nick.c_str(), nick.size(), 0);
     send(sock, user.c_str(), user.size(), 0);
+    
     std::string channel = "#channelbot";
     std::string join = "JOIN " + channel + "\r\n";
     send(sock, join.c_str(), join.size(), 0);
@@ -72,22 +74,45 @@ int main(int ac, char **av)
     while (true)
     {
         ssize_t bytes = recv(sock, buffer, sizeof(buffer) - 1, 0);
+        if (bytes <= 0) break;
+        
         buffer[bytes] = '\0';
         std::string msg(buffer);
         std::cout << "[SERVER] " << msg;
 
-        if (msg.find("PRIVMSG " + channel + " :BOT PING") != std::string::npos)
+        std::string replyTo = "";
+        
+        if (msg.find("PRIVMSG " + channel + " :") != std::string::npos)
         {
-            std::string pong = "PRIVMSG " + channel + " :PONG\r\n";
-            send(sock, pong.c_str(), pong.size(), 0);
+            // si dans le channel -> répondre dans le channel
+            replyTo = channel;
         }
-        if (msg.find("PRIVMSG " + channel + " :BOT TIME") != std::string::npos)
+        else if (msg.find("PRIVMSG ") != std::string::npos)
+        {
+            // Sinon c' est unmessage privé -> répondre à l'expéditeur
+            size_t exclamPos = msg.find('!');
+            if (exclamPos != std::string::npos)
+                replyTo = msg.substr(1, exclamPos - 1);
+        }
+        
+
+        if (msg.find("PRIVMSG " + replyTo + " :PING") != std::string::npos)
+        {
+            std::string response = "PRIVMSG " + replyTo + " :PONG\r\n";
+            send(sock, response.c_str(), response.size(), 0);
+        }
+        else if (msg.find("PRIVMSG " + replyTo + " :TIME") != std::string::npos)
         {
             time_t now = time(0);
-            std::string time = "PRIVMSG " + channel + " :current server time: " + std::string(ctime(&now)) + "\r\n";
-            send(sock, time.c_str(), time.size(), 0);
+            std::string time_str = std::string(ctime(&now));
+            if (!time_str.empty() && time_str[time_str.length()-1] == '\n') {
+                time_str.erase(time_str.length()-1);
+            }
+            std::string response = "PRIVMSG " + replyTo + " :current server time: " + time_str + "\r\n";
+            send(sock, response.c_str(), response.size(), 0);
         }
     }
+    
     close(sock);
     return (0);
 }
