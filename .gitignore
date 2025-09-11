@@ -57,6 +57,7 @@ dkms.conf
 settings.json
 *.pdf
 ircsrv
+channelbot
 master.sh
 master_code.txt
 all
