@@ -5,9 +5,44 @@
 #include <arpa/inet.h>
 #include <cstdlib>
 
+bool isValidPortString(const char* str, int& port) {
+    if (!str || *str == '\0') {
+        return false;
+    }
+    
+    char* endptr;
+    long val = std::strtol(str, &endptr, 10);
+    
+    if (*endptr != '\0') {
+        return false;
+    }
+    
+    if (val < 1024 || val > 65535) {
+        return false;
+    }
+    
+    port = static_cast<int>(val);
+    return true;
+}
+
 int main(int ac, char **av)
 {
-    (void)ac;
+    if (ac != 3) {
+        std::cerr << "\nUsage: ./channelbot <port> <password>\n\n";
+        return 1;
+    }
+    
+    int port;
+    if (!isValidPortString(av[1], port)) {
+        std::cerr << "\nERROR: invalid port (must be a number between 1024-65535)\n\n";
+        return 1;
+    }
+    
+    std::string password = av[2];
+    if (password.empty()) {
+        std::cerr << "\nERROR: password cannot be empty\n\n";
+        return 1;
+    }
     int sock = socket(AF_INET, SOCK_STREAM, 0);
 
     int i = std::atoi(av[1]);
