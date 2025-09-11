@@ -76,6 +76,8 @@ int main(int argc, char** argv) {
 
 /*
 
+## RFC 1459 - https://datatracker.ietf.org/doc/html/rfc1459
+
 ## connection complete commandes partielles
 
 {
