@@ -4,6 +4,16 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <cstdlib>
+#include <csignal>
+#include <cerrno>
+
+volatile sig_atomic_t g_stop = 0;
+int g_sock = -1;
+
+void handleSignal(int){ 
+    g_stop = 1;
+    close(g_sock);
+}
 
 bool isValidPortString(const char* str, int& port) {
     if (!str || *str == '\0') {
@@ -27,6 +37,8 @@ bool isValidPortString(const char* str, int& port) {
 
 int main(int ac, char **av)
 {
+    std::signal(SIGINT, handleSignal);
+
     if (ac != 3) {
         std::cerr << "\nUsage: ./channelbot <port> <password>\n\n";
         return 1;
@@ -44,14 +56,14 @@ int main(int ac, char **av)
         return 1;
     }
     
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    g_sock = socket(AF_INET, SOCK_STREAM, 0);
 
     sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(port);
     inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr);
 
-    if (connect(sock, (struct sockaddr *)& serv_addr, sizeof(serv_addr)) < 0)
+    if (connect(g_sock, (struct sockaddr *)& serv_addr, sizeof(serv_addr)) < 0)
     {
         std::cerr << "Connection failed" << std::endl;
         return 1;
@@ -60,26 +72,22 @@ int main(int ac, char **av)
     std::string pass = std::string("PASS ") + password + "\r\n";
     std::string nick = "NICK bot\r\n";
     std::string user = "USER channelbot 0 * :Channel Bot\r\n";
-    send(sock, pass.c_str(), pass.size(), 0);
-    send(sock, nick.c_str(), nick.size(), 0);
-    send(sock, user.c_str(), user.size(), 0);
-    
+    send(g_sock, pass.c_str(), pass.size(), 0);
+    send(g_sock, nick.c_str(), nick.size(), 0);
+    send(g_sock, user.c_str(), user.size(), 0);
     std::string channel = "#channelbot";
     std::string join = "JOIN " + channel + "\r\n";
-    send(sock, join.c_str(), join.size(), 0);
+    send(g_sock, join.c_str(), join.size(), 0);
     std::string topic = "TOPIC " + channel + " :Super channel du merveilleux BOT qui reste à votre disposition !!!\r\n";
-    send(sock, topic.c_str(), topic.size(), 0);
+    send(g_sock, topic.c_str(), topic.size(), 0);
     
     char buffer[512];
-    while (true)
+    while (!g_stop)
     {
-        ssize_t bytes = recv(sock, buffer, sizeof(buffer) - 1, 0);
-        if (bytes <= 0) break;
-        
+        ssize_t bytes = recv(g_sock, buffer, sizeof(buffer) - 1, 0);
         buffer[bytes] = '\0';
         std::string msg(buffer);
         std::cout << "[SERVER] " << msg;
-
         std::string replyTo = "";
         
         if (msg.find("PRIVMSG " + channel + " :") != std::string::npos)
@@ -96,12 +104,12 @@ int main(int ac, char **av)
         }
         
 
-        if (msg.find("PRIVMSG " + replyTo + " :PING") != std::string::npos)
+        if (msg.find(" :PING") != std::string::npos)
         {
             std::string response = "PRIVMSG " + replyTo + " :PONG\r\n";
-            send(sock, response.c_str(), response.size(), 0);
+            send(g_sock, response.c_str(), response.size(), 0);
         }
-        else if (msg.find("PRIVMSG " + replyTo + " :TIME") != std::string::npos)
+        else if (msg.find(" :TIME") != std::string::npos)
         {
             time_t now = time(0);
             std::string time_str = std::string(ctime(&now));
@@ -109,10 +117,10 @@ int main(int ac, char **av)
                 time_str.erase(time_str.length()-1);
             }
             std::string response = "PRIVMSG " + replyTo + " :current server time: " + time_str + "\r\n";
-            send(sock, response.c_str(), response.size(), 0);
+            send(g_sock, response.c_str(), response.size(), 0);
         }
     }
-    
-    close(sock);
+
+    close(g_sock);
     return (0);
 }
