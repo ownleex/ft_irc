@@ -12,6 +12,7 @@ int g_sock = -1;
 
 void handleSignal(int){ 
     g_stop = 1;
+    std::cout << "\nSIGINT received, shutting down..." << std::endl;
     close(g_sock);
 }
 
