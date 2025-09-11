@@ -103,24 +103,18 @@ int main(int ac, char **av)
                 replyTo = msg.substr(1, exclamPos - 1);
         }
         
-
         if (msg.find(" :PING") != std::string::npos)
         {
-            std::string response = "PRIVMSG " + replyTo + " :PONG\r\n";
-            send(g_sock, response.c_str(), response.size(), 0);
+            std::string pong = "PRIVMSG " + replyTo + " :PONG\r\n";
+            send(g_sock, pong.c_str(), pong.size(), 0);
         }
         else if (msg.find(" :TIME") != std::string::npos)
         {
             time_t now = time(0);
-            std::string time_str = std::string(ctime(&now));
-            if (!time_str.empty() && time_str[time_str.length()-1] == '\n') {
-                time_str.erase(time_str.length()-1);
-            }
-            std::string response = "PRIVMSG " + replyTo + " :current server time: " + time_str + "\r\n";
-            send(g_sock, response.c_str(), response.size(), 0);
+            std::string time = "PRIVMSG " + replyTo + " :current server time: " + std::string(ctime(&now)) + "\r\n";
+            send(g_sock, time.c_str(), time.size(), 0);
         }
     }
-
     close(g_sock);
     return (0);
 }
