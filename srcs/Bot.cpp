@@ -12,7 +12,6 @@ int g_sock = -1;
 
 void handleSignal(int){ 
     g_stop = 1;
-    std::cout << "\nSIGINT received, shutting down..." << std::endl;
     close(g_sock);
 }
 
@@ -96,7 +95,7 @@ int main(int ac, char **av)
             // si dans le channel -> répondre dans le channel
             replyTo = channel;
         }
-        else if (msg.find("PRIVMSG ") != std::string::npos)
+        else if (msg.find("PRIVMSG bot") != std::string::npos)
         {
             // Sinon c' est unmessage privé -> répondre à l'expéditeur
             size_t exclamPos = msg.find('!');
