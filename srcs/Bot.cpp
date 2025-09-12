@@ -100,7 +100,7 @@ int main(int ac, char **av)
             // si dans le channel -> répondre dans le channel
             replyTo = channel;
         }
-        else if (msg.find("PRIVMSG bot") != std::string::npos)
+        else if (msg.find("PRIVMSG bot ") != std::string::npos)
         {
             // Sinon c' est unmessage privé -> répondre à l'expéditeur
             size_t exclamPos = msg.find('!');
@@ -121,16 +121,11 @@ int main(int ac, char **av)
         }
         else if (msg.find("JOIN " + channel) != std::string::npos)
         {
-            size_t start = msg.find(':') + 1;
-            size_t excl = msg.find('!');
+            size_t exclamPos = msg.find('!');
             std::string newUser;
-            if (start != std::string::npos && excl != std::string::npos && excl > start)
-                newUser = msg.substr(start, excl - start);
-            if (!newUser.empty() && newUser != "bot")
-            {
-                std::string welcome = "PRIVMSG " + channel + " :Welcome " + newUser + " to " + channel + " I'm the bot\r\n";
-                send(g_sock, welcome.c_str(), welcome.size(), 0);
-            }
+            newUser = msg.substr(1, exclamPos - 1);
+            std::string welcome = "PRIVMSG " + channel + " :Welcome " + newUser + " to " + channel + " I'm the bot\r\n";
+            send(g_sock, welcome.c_str(), welcome.size(), 0);    
         }
     }
     close(g_sock);
