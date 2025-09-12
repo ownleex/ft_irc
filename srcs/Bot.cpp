@@ -89,7 +89,12 @@ int main(int ac, char **av)
         std::string msg(buffer);
         std::cout << "[SERVER] " << msg;
         std::string replyTo = "";
-        
+
+        if (bytes == 0) {
+            std::cout << "[BOT] Server disconnected" << std::endl;
+            break;
+        }
+
         if (msg.find("PRIVMSG " + channel + " :") != std::string::npos)
         {
             // si dans le channel -> répondre dans le channel
