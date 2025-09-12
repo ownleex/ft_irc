@@ -119,6 +119,19 @@ int main(int ac, char **av)
             std::string time = "PRIVMSG " + replyTo + " :current server time: " + std::string(ctime(&now)) + "\r\n";
             send(g_sock, time.c_str(), time.size(), 0);
         }
+        else if (msg.find("JOIN " + channel) != std::string::npos)
+        {
+            size_t start = msg.find(':') + 1;
+            size_t excl = msg.find('!');
+            std::string newUser;
+            if (start != std::string::npos && excl != std::string::npos && excl > start)
+                newUser = msg.substr(start, excl - start);
+            if (!newUser.empty() && newUser != "bot")
+            {
+                std::string welcome = "PRIVMSG " + channel + " :Welcome " + newUser + " to " + channel + " I'm the bot\r\n";
+                send(g_sock, welcome.c_str(), welcome.size(), 0);
+            }
+        }
     }
     close(g_sock);
     return (0);
