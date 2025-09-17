@@ -78,6 +78,8 @@ int main(int argc, char** argv) {
 
 ## RFC 1459 - https://datatracker.ietf.org/doc/html/rfc1459
 
+valgrind --leak-check=full --show-leak-kinds=all --track-fds=yes
+
 ## connection complete commandes partielles
 
 {

@@ -166,7 +166,7 @@ void CommandHandler::handleNick(int fd, const std::vector<std::string>& params)
 
 bool CommandHandler::isValidNickname(const std::string& nick)
 {
-    if (nick.empty() || nick.length() > 9) // RFC 1459: max 9 caractères
+    if (nick.empty()) // RFC 1459: max 9 caractères
         return false;
     
     // Premier caractère doit être une lettre
