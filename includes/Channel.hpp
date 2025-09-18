@@ -13,6 +13,12 @@ class Channel
         std::string _name;
         std::string _topic;
         std::string _password;
+
+        // std::set<int> : Choisi pour les FDs des clients car :
+        // - Unicité automatique : un client ne peut être membre qu'une seule fois
+        // - Recherche rapide O(log n) pour isMember(), isOperator(), isInvited()
+        // - Insertion/suppression rapides O(log n)
+        // - Tri automatique des FDs pour un affichage cohérent
         std::set<int> _members;          // FDs des clients membres
         std::set<int> _operators;        // FDs des opérateurs
         std::set<int> _invited;          // FDs des clients invités (mode +i)

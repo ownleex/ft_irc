@@ -16,6 +16,13 @@ class Client
         std::string _buffer;
         bool _authenticated;
         bool _registered;
+
+        // std::set<std::string> : Choisi pour les noms de canaux car :
+        // - Unicité automatique : un client ne peut joindre un canal qu'une seule fois
+        // - Recherche rapide O(log n) pour isInChannel()
+        // - Insertion/suppression rapides O(log n) pour joinChannel()/leaveChannel()
+        // - Tri alphabétique automatique des noms de canaux
+        // - Pas besoin d'accès par index (contrairement à vector)
         std::set<std::string> _channels;
 
     public:

@@ -4,7 +4,6 @@
 #include <vector>
 #include <map>
 
-// Forward declarations
 class Server;
 class Client;
 class Channel;
@@ -15,6 +14,11 @@ class CommandHandler
         Server* _server;  // Référence vers le serveur
 
         // Utilitaires
+        // std::vector<std::string> : Choisi pour split() car :
+        // - Ordre des tokens important (paramètres de commande séquentiels)
+        // - Accès par index nécessaire pour parser les commandes IRC
+        // - Nombre variable de paramètres selon la commande
+        // - Itération séquentielle fréquente
         std::vector<std::string> split(const std::string& str, char delimiter);
         void sendResponse(int fd, const std::string& message);
 
