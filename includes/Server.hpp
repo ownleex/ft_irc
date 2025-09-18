@@ -11,6 +11,7 @@
 #include <netinet/in.h>
 #include <poll.h>
 #include <csignal>
+#include <cerrno>
 #include "Client.hpp"
 #include "Channel.hpp"
 #include "CommandHandler.hpp"

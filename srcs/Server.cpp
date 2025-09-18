@@ -1,5 +1,4 @@
 #include <Server.hpp>
-#include <cerrno>
 
 volatile sig_atomic_t Server::_stop = 0;
 
@@ -15,12 +14,7 @@ Server::Server(int port, const std::string &password) : _port(port), _password(p
     _commandHandler = new CommandHandler(this);
 
     // Installe le gestionnaire de signal (Ctrl+C)
-    struct sigaction sa;
-    std::memset(&sa, 0, sizeof(sa));
-    sa.sa_handler = &Server::handleSignal;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0; // assure que les syscalls comme poll retournent EINTR
-    sigaction(SIGINT, &sa, NULL);
+    std::signal(SIGINT, &Server::handleSignal);
     _stop = 0;
 
     initSocket();
