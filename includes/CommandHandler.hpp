@@ -17,6 +17,7 @@ class CommandHandler
         // HELP
         void handleHelp(int fd, const std::vector<std::string>& params);
         void sendResponse(int fd, const std::string& message);
+        // Split
         // std::vector<std::string> : Choisi pour split() car :
         // - Ordre des tokens important (paramètres de commande séquentiels)
         // - Accès par index nécessaire pour parser les commandes IRC
@@ -65,7 +66,7 @@ class CommandHandler
         /// CommandHanler_Core.cpp
         CommandHandler(Server* server);
         ~CommandHandler();
-        
+
         // Fonction principale
         void processClientBuffer(int fd);
         void executeCommand(int fd, const std::string& command);
