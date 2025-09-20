@@ -40,7 +40,7 @@ void Server::initSocket()
     sockaddr_in addr; // struct pour define l'addresse ip
     std::memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET; 
-    addr.sin_addr.s_addr = INADDR_ANY; // accepte toute les connection
+    addr.sin_addr.s_addr = INADDR_ANY; // accepte les connections sur toutes les interfaces
     addr.sin_port = htons(_port); // ca change le port en ordre reseau
     // en gros je donne des ordres a addresse ip sur les trois ligne du dessus
     if (bind(_serverSocket, (struct sockaddr *)&addr, sizeof(addr)) < 0)
