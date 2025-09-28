@@ -19,10 +19,8 @@ class CommandHandler
         void sendResponse(int fd, const std::string& message);
         // Split
         // std::vector<std::string> : Choisi pour split() car :
-        // - Ordre des tokens important (paramètres de commande séquentiels)
+        // - Ordre des tokens conservé
         // - Accès par index nécessaire pour parser les commandes IRC
-        // - Nombre variable de paramètres selon la commande
-        // - Itération séquentielle fréquente
         std::vector<std::string> split(const std::string& str, char delimiter);
 
 

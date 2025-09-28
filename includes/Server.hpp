@@ -29,23 +29,19 @@ class Server
 
         // std::vector<pollfd> : Choisi pour poll() car :
         // - poll() attend un tableau contigu de structures pollfd
-        // - Accès par index rapide O(1) nécessaire pour poll()
-        // - Insertion/suppression moins fréquentes que l'accès
+        // - Accès par index rapide nécessaire pour poll()
         // - Compatible avec la fonction système poll(data(), size())
         std::vector<pollfd> _pollfds;
 
         // std::map<int, Client> : Choisi avec FD comme clé car :
-        // - Recherche rapide O(log n) par file descriptor
-        // - Association directe FD -> Client évite les recherches linéaires
-        // - Insertion/suppression rapides O(log n)
-        // - Tri automatique par FD pour debugging et affichage
+        // - Recherche rapide par file descriptor
+        // - Association directe FD -> Client
+        // - Évite les doublons de clients avec le même FD
         std::map<int, Client> _clients;
 
         // std::map<std::string, Channel> : Choisi avec nom de canal comme clé car :
-        // - Recherche rapide O(log n) par nom de canal (#channel)
+        // - Recherche rapide par nom de canal (#channel)
         // - Association directe nom -> Channel pour getChannel()
-        // - Insertion/suppression rapides O(log n)
-        // - Tri alphabétique automatique des noms de canaux
         // - Évite les doublons de canaux avec le même nom
         std::map<std::string, Channel> _channels;
         CommandHandler* _commandHandler;
